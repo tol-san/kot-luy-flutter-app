@@ -1,0 +1,204 @@
+import 'package:clock/clock.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:kot_loy/data/expense_repository.dart';
+import 'package:kot_loy/main.dart';
+import 'package:kot_loy/models/expense.dart';
+import 'package:sqflite/sqflite.dart';
+
+class MemoryRepository implements ExpenseRepository {
+  final List<Expense> items = [];
+  @override
+  Database get database => throw UnsupportedError('Test double');
+  @override
+  Future<List<Expense>> all() async =>
+      [...items]..sort((a, b) => b.date.compareTo(a.date));
+  @override
+  Future<void> save(Expense expense) async {
+    final id = expense.id ?? items.fold(0, (a, e) => e.id! > a ? e.id! : a) + 1;
+    items.removeWhere((e) => e.id == id);
+    items.add(
+      Expense(
+        id: id,
+        title: expense.title,
+        amount: expense.amount,
+        category: expense.category,
+        date: expense.date,
+        note: expense.note,
+      ),
+    );
+  }
+
+  @override
+  Future<void> delete(int id) async => items.removeWhere((e) => e.id == id);
+  @override
+  Future<void> close() async {}
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async {
+    final font = FontLoader('NotoSansKhmer')
+      ..addFont(rootBundle.load('assets/fonts/NotoSansKhmer.ttf'));
+    await font.load();
+    final icons = FontLoader('MaterialIcons')
+      ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+    await icons.load();
+  });
+  Future<void> mount(
+    WidgetTester tester,
+    MemoryRepository repo, {
+    Size size = const Size(390, 844),
+    double scale = 1,
+  }) async {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = scale;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpWidget(KotLoyApp(repository: repo));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+    'add validation, save, view detail, edit and delete refresh totals',
+    (tester) async {
+      final repo = MemoryRepository();
+      await mount(tester, repo);
+      expect(find.text('0 ៛'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('addExpense')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('saveExpense')));
+      await tester.tap(find.byKey(const Key('saveExpense')));
+      await tester.pumpAndSettle();
+      expect(repo.items, isEmpty);
+      await tester.enterText(find.byKey(const Key('amountInput')), '12500');
+      expect(
+        tester
+            .widget<TextFormField>(find.byKey(const Key('amountInput')))
+            .controller!
+            .text,
+        '12,500',
+      );
+      await tester.enterText(
+        find.byKey(const Key('titleInput')),
+        'បាយថ្ងៃត្រង់',
+      );
+      await tester.ensureVisible(find.byKey(const Key('saveExpense')));
+      await tester.tap(find.byKey(const Key('saveExpense')));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(repo.items.single.amount, 12500);
+      expect(find.byKey(const Key('totalAmount')), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('totalAmount'))).data,
+        '12,500 ៛',
+      );
+      await tester.ensureVisible(find.text('បាយថ្ងៃត្រង់'));
+      await tester.tap(find.text('បាយថ្ងៃត្រង់'));
+      await tester.pumpAndSettle();
+      expect(find.text('ចំណាយលម្អិត'), findsOneWidget);
+      await tester.ensureVisible(find.text('កែប្រែចំណាយ'));
+      await tester.tap(find.text('កែប្រែចំណាយ'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextFormField>(find.byKey(const Key('amountInput')))
+            .controller!
+            .text,
+        '12,500',
+      );
+      await tester.enterText(find.byKey(const Key('amountInput')), '15000');
+      await tester.ensureVisible(find.byKey(const Key('saveExpense')));
+      await tester.tap(find.byKey(const Key('saveExpense')));
+      await tester.pumpAndSettle();
+      expect(find.text('15,000 ៛'), findsOneWidget);
+      await tester.ensureVisible(find.text('លុបចំណាយ'));
+      await tester.tap(find.text('លុបចំណាយ'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('លុប'));
+      await tester.pumpAndSettle();
+      expect(repo.items, isEmpty);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('totalAmount'))).data,
+        '0 ៛',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('mobile screens render with sample data', (tester) async {
+    await withClock(Clock.fixed(DateTime(2026, 9, 6, 12)), () async {
+      final repo = MemoryRepository();
+      final now = clock.now();
+      final samples = [
+        ('បាយថ្ងៃត្រង់', 12000, ExpenseCategory.food),
+        ('កាហ្វេពេលព្រឹក', 6500, ExpenseCategory.coffee),
+        ('ជិះតុកតុក', 8000, ExpenseCategory.transport),
+        ('ទិញសៀវភៅ', 18000, ExpenseCategory.shopping),
+      ];
+      for (var i = 0; i < samples.length; i++) {
+        final s = samples[i];
+        await repo.save(
+          Expense(
+            title: s.$1,
+            amount: s.$2,
+            category: s.$3,
+            date: now.subtract(Duration(hours: i)),
+            note: 'ចំណាយប្រចាំថ្ងៃ',
+          ),
+        );
+      }
+      await mount(tester, repo);
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('previews/home.png'),
+      );
+      await tester.ensureVisible(find.text('បាយថ្ងៃត្រង់'));
+      await tester.tap(find.text('បាយថ្ងៃត្រង់'));
+      await tester.pumpAndSettle();
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('previews/detail.png'),
+      );
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('addExpense')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('20,000 ៛'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextFormField>(find.byKey(const Key('amountInput')))
+            .controller!
+            .text,
+        '20,000',
+      );
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('previews/add.png'),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  });
+  testWidgets('small device, large text and keyboard do not overflow', (
+    tester,
+  ) async {
+    await mount(
+      tester,
+      MemoryRepository(),
+      size: const Size(320, 640),
+      scale: 1.4,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byKey(const Key('addExpense')));
+    await tester.pumpAndSettle();
+    tester.view.viewInsets = const FakeViewPadding(bottom: 270);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('saveExpense')));
+    expect(tester.takeException(), isNull);
+    tester.view.resetViewInsets();
+  });
+}
