@@ -30,11 +30,9 @@ class ExpenseForm extends StatefulWidget {
 
 class _ExpenseFormState extends State<ExpenseForm> {
   final _form = GlobalKey<FormState>();
-  late final _title = TextEditingController(text: widget.expense?.title ?? '');
   late final _amount = TextEditingController(
     text: formatRielInput(widget.expense?.amount.toString() ?? ''),
   );
-  late final _note = TextEditingController(text: widget.expense?.note ?? '');
   late ExpenseCategory _category =
       widget.expense?.category ?? ExpenseCategory.food;
   late DateTime _date = widget.expense?.date ?? clock.now();
@@ -42,9 +40,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
   String? _error;
   @override
   void dispose() {
-    _title.dispose();
     _amount.dispose();
-    _note.dispose();
     super.dispose();
   }
 
@@ -58,11 +54,11 @@ class _ExpenseFormState extends State<ExpenseForm> {
       await widget.repository.save(
         Expense(
           id: widget.expense?.id,
-          title: _title.text.trim(),
+          title: _category.label,
           amount: int.parse(_amount.text.replaceAll(',', '')),
           category: _category,
           date: _date,
-          note: _note.text.trim(),
+          note: '',
         ),
       );
       if (mounted) Navigator.pop(context, true);
@@ -254,21 +250,6 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                TextFormField(
-                  key: const Key('titleInput'),
-                  controller: _title,
-                  maxLength: 80,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'ចំណាយលើអ្វី?',
-                    hintText: 'ឧ. បាយថ្ងៃត្រង់',
-                    counterText: '',
-                  ),
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? 'សូមបញ្ចូលឈ្មោះចំណាយ'
-                      : null,
-                ),
-                const SizedBox(height: 14),
                 Material(
                   color: Colors.white,
                   shape: RoundedRectangleBorder(
@@ -308,18 +289,6 @@ class _ExpenseFormState extends State<ExpenseForm> {
                         );
                       }
                     },
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  key: const Key('noteInput'),
-                  controller: _note,
-                  maxLines: 2,
-                  maxLength: 500,
-                  decoration: const InputDecoration(
-                    labelText: 'កំណត់ចំណាំ (មិនចាំបាច់)',
-                    counterText: '',
-                    alignLabelWithHint: true,
                   ),
                 ),
                 if (_error != null)

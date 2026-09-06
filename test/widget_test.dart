@@ -82,23 +82,20 @@ void main() {
             .text,
         '12,500',
       );
-      await tester.enterText(
-        find.byKey(const Key('titleInput')),
-        'បាយថ្ងៃត្រង់',
-      );
       await tester.ensureVisible(find.byKey(const Key('saveExpense')));
       await tester.tap(find.byKey(const Key('saveExpense')));
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
       expect(repo.items.single.amount, 12500);
+      expect(repo.items.single.title, 'អាហារ');
       expect(find.byKey(const Key('totalAmount')), findsOneWidget);
       expect(
         tester.widget<Text>(find.byKey(const Key('totalAmount'))).data,
         '12,500 ៛',
       );
-      await tester.ensureVisible(find.text('បាយថ្ងៃត្រង់'));
-      await tester.tap(find.text('បាយថ្ងៃត្រង់'));
+      await tester.ensureVisible(find.text('−12,500 ៛'));
+      await tester.tap(find.text('−12,500 ៛'));
       await tester.pumpAndSettle();
       expect(find.text('ចំណាយលម្អិត'), findsOneWidget);
       await tester.ensureVisible(find.text('កែប្រែចំណាយ'));
