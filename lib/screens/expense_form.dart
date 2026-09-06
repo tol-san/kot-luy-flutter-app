@@ -33,14 +33,20 @@ class _ExpenseFormState extends State<ExpenseForm> {
   late final _amount = TextEditingController(
     text: formatRielInput(widget.expense?.amount.toString() ?? ''),
   );
+  late final _otherTitle = TextEditingController(
+    text: widget.expense?.category == ExpenseCategory.other
+        ? (widget.expense?.title ?? '')
+        : '',
+  );
   late ExpenseCategory _category =
-      widget.expense?.category ?? ExpenseCategory.food;
+      widget.expense?.category ?? ExpenseCategory.breakfast;
   late DateTime _date = widget.expense?.date ?? clock.now();
   bool _saving = false;
   String? _error;
   @override
   void dispose() {
     _amount.dispose();
+    _otherTitle.dispose();
     super.dispose();
   }
 
@@ -51,10 +57,13 @@ class _ExpenseFormState extends State<ExpenseForm> {
       _error = null;
     });
     try {
+      final title = _category == ExpenseCategory.other
+          ? (_otherTitle.text.trim().isEmpty ? 'ផ្សេងៗ' : _otherTitle.text.trim())
+          : _category.label;
       await widget.repository.save(
         Expense(
           id: widget.expense?.id,
-          title: _category.label,
+          title: title,
           amount: int.parse(_amount.text.replaceAll(',', '')),
           category: _category,
           date: _date,
@@ -225,20 +234,24 @@ class _ExpenseFormState extends State<ExpenseForm> {
                                   onTap: () => setState(() => _category = c),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 11,
+                                      vertical: 13,
+                                      horizontal: 4,
                                     ),
-                                    child: Column(
-                                      children: [
-                                        Icon(c.icon, color: c.color, size: 23),
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          c.label,
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: ink,
-                                          ),
+                                    child: Center(
+                                      child: Text(
+                                        c.label,
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: c == _category
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                          color: c == _category
+                                              ? c.color
+                                              : ink,
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -249,6 +262,25 @@ class _ExpenseFormState extends State<ExpenseForm> {
                         .toList(),
                   ),
                 ),
+                if (_category == ExpenseCategory.other) ...[
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    key: const Key('customTitleInput'),
+                    controller: _otherTitle,
+                    autofocus: true,
+                    maxLength: 80,
+                    decoration: const InputDecoration(
+                      labelText: 'ឈ្មោះចំណាយផ្សេងៗ',
+                      hintText: 'ឧ. ទិញសៀវភៅ, កាត់សក់...',
+                      counterText: '',
+                    ),
+                    validator: (value) =>
+                        _category == ExpenseCategory.other &&
+                                (value == null || value.trim().isEmpty)
+                            ? 'សូមបញ្ចូលឈ្មោះចំណាយ'
+                            : null,
+                  ),
+                ],
                 const SizedBox(height: 20),
                 Material(
                   color: Colors.white,

@@ -2,30 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 enum ExpenseCategory {
-  food('អាហារ', Icons.restaurant_rounded, Color(0xFF658B62), Color(0xFFEAF0E1)),
+  breakfast(
+    'បាយពេលព្រឹក',
+    Icons.wb_sunny_outlined,
+    Color(0xFFE08D46),
+    Color(0xFFF9EFE6),
+  ),
+  lunch(
+    'បាយថ្ងៃត្រង់',
+    Icons.restaurant_rounded,
+    Color(0xFF658B62),
+    Color(0xFFEAF0E1),
+  ),
+  dinner(
+    'បាយល្ងាច',
+    Icons.nights_stay_outlined,
+    Color(0xFF8B6B55),
+    Color(0xFFF1EAE4),
+  ),
+  fuel(
+    'ចាក់សាំង',
+    Icons.local_gas_station_rounded,
+    Color(0xFF5C8395),
+    Color(0xFFE4EEF2),
+  ),
   coffee(
     'កាហ្វេ',
     Icons.local_cafe_outlined,
     Color(0xFFAF805D),
     Color(0xFFF3E8DD),
-  ),
-  transport(
-    'ធ្វើដំណើរ',
-    Icons.directions_bus_outlined,
-    Color(0xFF688C9B),
-    Color(0xFFE5EEF1),
-  ),
-  shopping(
-    'ទិញទំនិញ',
-    Icons.shopping_bag_outlined,
-    Color(0xFFBA8C94),
-    Color(0xFFF6E8EB),
-  ),
-  bills(
-    'វិក្កយបត្រ',
-    Icons.receipt_long_outlined,
-    Color(0xFFA19563),
-    Color(0xFFF4F0DE),
   ),
   other(
     'ផ្សេងៗ',
@@ -39,6 +44,17 @@ enum ExpenseCategory {
   final IconData icon;
   final Color color;
   final Color background;
+
+  static ExpenseCategory fromName(String name) {
+    return switch (name) {
+      'breakfast' => breakfast,
+      'lunch' || 'food' => lunch,
+      'dinner' => dinner,
+      'fuel' || 'transport' => fuel,
+      'coffee' => coffee,
+      _ => other,
+    };
+  }
 }
 
 class Expense {
@@ -57,7 +73,7 @@ class Expense {
   final DateTime date;
   final String note;
   Map<String, Object?> toMap() => {
-    if (id != null) 'id': id,
+    'id': id,
     'title': title,
     'amount': amount,
     'category': category.name,
@@ -65,10 +81,10 @@ class Expense {
     'note': note,
   };
   factory Expense.fromMap(Map<String, Object?> map) => Expense(
-    id: map['id'] as int,
+    id: map['id'] as int?,
     title: map['title'] as String,
     amount: map['amount'] as int,
-    category: ExpenseCategory.values.byName(map['category'] as String),
+    category: ExpenseCategory.fromName(map['category'] as String),
     date: DateTime.fromMillisecondsSinceEpoch(map['date'] as int),
     note: map['note'] as String,
   );

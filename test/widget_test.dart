@@ -88,7 +88,7 @@ void main() {
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
       expect(repo.items.single.amount, 12500);
-      expect(repo.items.single.title, 'អាហារ');
+      expect(repo.items.single.title, 'បាយពេលព្រឹក');
       expect(find.byKey(const Key('totalAmount')), findsOneWidget);
       expect(
         tester.widget<Text>(find.byKey(const Key('totalAmount'))).data,
@@ -131,10 +131,10 @@ void main() {
       final repo = MemoryRepository();
       final now = clock.now();
       final samples = [
-        ('បាយថ្ងៃត្រង់', 12000, ExpenseCategory.food),
+        ('បាយថ្ងៃត្រង់', 12000, ExpenseCategory.lunch),
         ('កាហ្វេពេលព្រឹក', 6500, ExpenseCategory.coffee),
-        ('ជិះតុកតុក', 8000, ExpenseCategory.transport),
-        ('ទិញសៀវភៅ', 18000, ExpenseCategory.shopping),
+        ('ចាក់សាំង', 8000, ExpenseCategory.fuel),
+        ('ទិញសៀវភៅ', 18000, ExpenseCategory.other),
       ];
       for (var i = 0; i < samples.length; i++) {
         final s = samples[i];
@@ -153,8 +153,8 @@ void main() {
         find.byType(MaterialApp),
         matchesGoldenFile('previews/home.png'),
       );
-      await tester.ensureVisible(find.text('បាយថ្ងៃត្រង់'));
-      await tester.tap(find.text('បាយថ្ងៃត្រង់'));
+      await tester.ensureVisible(find.text('−12,000 ៛'));
+      await tester.tap(find.text('−12,000 ៛'));
       await tester.pumpAndSettle();
       await expectLater(
         find.byType(MaterialApp),
@@ -228,5 +228,34 @@ void main() {
     await tester.tap(find.byKey(const Key('clearAmount')));
     await tester.pumpAndSettle();
     expect(tester.widget<TextFormField>(inputFinder).controller!.text, '');
+  });
+  testWidgets('selecting other category shows custom title input', (
+    tester,
+  ) async {
+    final repo = MemoryRepository();
+    await mount(tester, repo);
+    await tester.tap(find.byKey(const Key('addExpense')));
+    await tester.pumpAndSettle();
+
+    // Default category does not show custom title input
+    expect(find.byKey(const Key('customTitleInput')), findsNothing);
+
+    // Tap ផ្សេងៗ
+    await tester.tap(find.text('ផ្សេងៗ'));
+    await tester.pumpAndSettle();
+
+    // Now customTitleInput is visible
+    expect(find.byKey(const Key('customTitleInput')), findsOneWidget);
+
+    // Enter amount and custom title
+    await tester.enterText(find.byKey(const Key('amountInput')), '5000');
+    await tester.enterText(find.byKey(const Key('customTitleInput')), 'ទិញសៀវភៅ');
+    await tester.ensureVisible(find.byKey(const Key('saveExpense')));
+    await tester.tap(find.byKey(const Key('saveExpense')));
+    await tester.pumpAndSettle();
+
+    expect(repo.items.single.category, ExpenseCategory.other);
+    expect(repo.items.single.title, 'ទិញសៀវភៅ');
+    expect(repo.items.single.amount, 5000);
   });
 }

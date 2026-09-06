@@ -22,7 +22,7 @@ void main() {
           Expense(
             title: 'បាយថ្ងៃត្រង់',
             amount: 12500,
-            category: ExpenseCategory.food,
+            category: ExpenseCategory.lunch,
             date: DateTime(2026, 9, 6),
             note: 'ជាមួយមិត្តភក្ដិ',
           ),
@@ -63,7 +63,7 @@ void main() {
             Expense(
               title: 'invalid',
               amount: 0,
-              category: ExpenseCategory.food,
+              category: ExpenseCategory.lunch,
               date: DateTime.now(),
             ),
           ),
@@ -74,7 +74,7 @@ void main() {
             Expense(
               title: ' ',
               amount: 100,
-              category: ExpenseCategory.food,
+              category: ExpenseCategory.lunch,
               date: DateTime.now(),
             ),
           ),
