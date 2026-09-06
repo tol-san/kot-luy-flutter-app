@@ -62,9 +62,13 @@ class LaunchArtwork extends StatelessWidget {
   const LaunchArtwork({super.key});
 
   @override
-  Widget build(BuildContext context) => SvgPicture.asset(
-    'assets/illustrations/kot-luy-logo.svg',
-    width: math.min(360.0, MediaQuery.sizeOf(context).width - 48),
-    semanticsLabel: 'កត់លុយ',
-  );
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final available = screenWidth > 64 ? screenWidth - 48 : 342.0;
+    return SvgPicture.asset(
+      'assets/illustrations/kot-luy-logo.svg',
+      width: math.min(360.0, available),
+      semanticsLabel: 'កត់លុយ',
+    );
+  }
 }
