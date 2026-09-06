@@ -85,29 +85,13 @@ class _DetailScreenState extends State<DetailScreen> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: _expense.category.background,
-                  borderRadius: BorderRadius.circular(26),
-                ),
-                child: Icon(
-                  _expense.category.icon,
-                  size: 36,
-                  color: _expense.category.color,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             Text(
               _expense.title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 7),
+            const SizedBox(height: 10),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
@@ -119,19 +103,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.check_circle_rounded, size: 15, color: green),
-                SizedBox(width: 6),
-                Text(
-                  'បានកត់ត្រារួច',
-                  style: TextStyle(color: green, fontSize: 12),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
             Container(
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
@@ -150,29 +122,27 @@ class _DetailScreenState extends State<DetailScreen> {
                   _row(
                     Icons.calendar_today_outlined,
                     'កាលបរិច្ឆេទ',
-                    displayDate(_expense.date),
+                    '${displayDate(_expense.date)} • ${formatTime(_expense.date)}',
                   ),
                   const Divider(height: 32),
                   _row(Icons.payments_outlined, 'រូបិយប័ណ្ណ', 'រៀល (KHR)'),
-                  const Divider(height: 32),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'កំណត់ចំណាំ',
-                          style: TextStyle(fontSize: 12, color: muted),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _expense.note.isEmpty
-                              ? 'មិនមានកំណត់ចំណាំ'
-                              : _expense.note,
-                        ),
-                      ],
+                  if (_expense.note.isNotEmpty) ...[
+                    const Divider(height: 32),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'កំណត់ចំណាំ',
+                            style: TextStyle(fontSize: 12, color: muted),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(_expense.note),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

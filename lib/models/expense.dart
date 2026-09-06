@@ -142,10 +142,14 @@ String dayLabel(DateTime date, DateTime now) {
   return displayDate(date);
 }
 
-String formatExpenseDateTime(DateTime date, DateTime now) {
+String formatTime(DateTime date) {
   final hour = date.hour.toString().padLeft(2, '0');
   final minute = date.minute.toString().padLeft(2, '0');
-  final timeStr = '$hour:$minute';
+  return '$hour:$minute';
+}
+
+String formatExpenseDateTime(DateTime date, DateTime now) {
+  final timeStr = formatTime(date);
   final startOfToday = DateTime(now.year, now.month, now.day);
   final startOfDate = DateTime(date.year, date.month, date.day);
   if (startOfDate == startOfToday) {
@@ -153,3 +157,4 @@ String formatExpenseDateTime(DateTime date, DateTime now) {
   }
   return '$timeStr • ${displayDate(date)}';
 }
+
