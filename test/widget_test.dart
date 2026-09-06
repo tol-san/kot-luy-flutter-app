@@ -39,6 +39,11 @@ class MemoryRepository implements ExpenseRepository {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async {
+    final googleSans = FontLoader('Google Sans')
+      ..addFont(rootBundle.load('assets/fonts/GoogleSans-Regular.ttf'))
+      ..addFont(rootBundle.load('assets/fonts/GoogleSans-Medium.ttf'))
+      ..addFont(rootBundle.load('assets/fonts/GoogleSans-Bold.ttf'));
+    await googleSans.load();
     final font = FontLoader('NotoSansKhmer')
       ..addFont(rootBundle.load('assets/fonts/NotoSansKhmer.ttf'));
     await font.load();

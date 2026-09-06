@@ -7,7 +7,8 @@ const line = Color(0xFFE7E9DF);
 const green = Color(0xFF35634B);
 ThemeData appTheme() => ThemeData(
   useMaterial3: true,
-  fontFamily: 'NotoSansKhmer',
+  fontFamily: 'Google Sans',
+  fontFamilyFallback: const ['NotoSansKhmer'],
   scaffoldBackgroundColor: paper,
   colorScheme: ColorScheme.fromSeed(
     seedColor: green,
@@ -37,7 +38,8 @@ ThemeData appTheme() => ThemeData(
       minimumSize: const Size(0, 54),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       textStyle: const TextStyle(
-        fontFamily: 'NotoSansKhmer',
+        fontFamily: 'Google Sans',
+        fontFamilyFallback: ['NotoSansKhmer'],
         fontWeight: FontWeight.w600,
         fontSize: 15,
       ),
