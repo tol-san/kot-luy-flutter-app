@@ -81,15 +81,17 @@ class _ExpenseFormState extends State<ExpenseForm> {
   }
 
   Future<void> _manageCategories() async {
-    final updated = await CategoryManagementSheet.show(
+    final result = await CategoryManagementSheet.show(
       context,
       widget.repository,
     );
     if (!mounted) return;
-    if (updated != null) {
+    if (result != null) {
       setState(() {
-        _categories = updated;
-        if (!_categories.any((c) => c == _category)) {
+        _categories = result.categories;
+        if (result.selectedCategory != null) {
+          _category = result.selectedCategory!;
+        } else if (!_categories.any((c) => c == _category)) {
           _category = _categories.first;
         }
       });

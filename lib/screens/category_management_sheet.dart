@@ -4,6 +4,16 @@ import '../data/expense_repository.dart';
 import '../models/expense.dart';
 import '../theme.dart';
 
+class CategoryManagementResult {
+  const CategoryManagementResult({
+    required this.categories,
+    this.selectedCategory,
+  });
+
+  final List<ExpenseCategory> categories;
+  final ExpenseCategory? selectedCategory;
+}
+
 class CategoryManagementSheet extends StatefulWidget {
   const CategoryManagementSheet({
     super.key,
@@ -14,10 +24,10 @@ class CategoryManagementSheet extends StatefulWidget {
   final ExpenseRepository repository;
   final ValueChanged<List<ExpenseCategory>>? onCategoriesChanged;
 
-  static Future<List<ExpenseCategory>?> show(
+  static Future<CategoryManagementResult?> show(
     BuildContext context,
     ExpenseRepository repository,
-  ) => showModalBottomSheet<List<ExpenseCategory>>(
+  ) => showModalBottomSheet<CategoryManagementResult>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -30,6 +40,8 @@ class CategoryManagementSheet extends StatefulWidget {
 
 class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
   final _textController = TextEditingController();
+  final _focusNode = FocusNode();
+  bool _isFocused = false;
   List<ExpenseCategory> _categories = [];
   bool _loading = true;
   bool _adding = false;
@@ -37,11 +49,15 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
   @override
   void initState() {
     super.initState();
+    _focusNode.addListener(() {
+      if (mounted) setState(() => _isFocused = _focusNode.hasFocus);
+    });
     _loadCategories();
   }
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _textController.dispose();
     super.dispose();
   }
@@ -63,13 +79,16 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
     setState(() => _adding = true);
     try {
       final newCat = await widget.repository.addCategory(text);
-      _textController.clear();
+      _categories.add(newCat);
+      widget.onCategoriesChanged?.call(_categories);
       if (mounted) {
-        setState(() {
-          _categories.add(newCat);
-          _adding = false;
-        });
-        widget.onCategoriesChanged?.call(_categories);
+        Navigator.pop(
+          context,
+          CategoryManagementResult(
+            categories: _categories,
+            selectedCategory: newCat,
+          ),
+        );
       }
     } catch (_) {
       if (mounted) setState(() => _adding = false);
@@ -181,7 +200,13 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
                     key: const Key('closeCategorySheet'),
                     tooltip: 'បិទ',
                     icon: const Icon(Icons.close_rounded, color: muted),
-                    onPressed: () => Navigator.pop(context, _categories),
+                    onPressed: () => Navigator.pop(
+                      context,
+                      CategoryManagementResult(
+                        categories: _categories,
+                        selectedCategory: null,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -191,65 +216,77 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
               child: SizedBox(
-                height: 48,
+                height: 44,
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
-                      child: TextField(
-                        key: const Key('addCategoryInput'),
-                        controller: _textController,
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => _addCategory(),
-                        decoration: InputDecoration(
-                          hintText: 'បញ្ចូលឈ្មោះប្រភេទថ្មី...',
-                          hintStyle: const TextStyle(fontSize: 13, color: muted),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: _isFocused ? green : line,
+                            width: _isFocused ? 1.5 : 1,
                           ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: line),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: line),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: green, width: 1.5),
+                        ),
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: TextField(
+                          key: const Key('addCategoryInput'),
+                          controller: _textController,
+                          focusNode: _focusNode,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _addCategory(),
+                          style: const TextStyle(fontSize: 13, color: ink),
+                          decoration: const InputDecoration(
+                            hintText: 'បញ្ចូលឈ្មោះប្រភេទថ្មី...',
+                            hintStyle: TextStyle(fontSize: 13, color: muted),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            filled: false,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    FilledButton.icon(
-                      key: const Key('addCategoryButton'),
-                      onPressed: _adding ? null : _addCategory,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: green,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                    SizedBox(
+                      height: 44,
+                      child: FilledButton.icon(
+                        key: const Key('addCategoryButton'),
+                        onPressed: _adding ? null : _addCategory,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: green,
+                          elevation: 0,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          minimumSize: Size.zero,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
-                      ),
-                      icon: _adding
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.add_rounded, size: 18),
-                      label: const Text(
-                        'បន្ថែម',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        icon: _adding
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.add_rounded, size: 16),
+                        label: const Text(
+                          'បន្ថែម',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ],

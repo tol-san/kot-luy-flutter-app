@@ -402,24 +402,10 @@ void main() {
       await tester.tap(find.byKey(const Key('addCategoryButton')));
       await tester.pumpAndSettle();
 
-      // Verify it appears in the reorderable list
-      expect(find.text('ថ្លៃសាលា'), findsOneWidget);
+      // Verify the management sheet is automatically closed
+      expect(find.text('រៀបចំប្រភេទចំណាយ'), findsNothing);
 
-      // Close the management sheet
-      await tester.tap(find.byKey(const Key('closeCategorySheet')));
-      await tester.pumpAndSettle();
-
-      // Since 'ថ្លៃសាលា' is category #6, tap 'ច្រើនទៀត' to open picker
-      expect(find.byKey(const Key('category_more')), findsOneWidget);
-      await tester.tap(find.byKey(const Key('category_more')));
-      await tester.pumpAndSettle();
-
-      // Pick 'ថ្លៃសាលា' from picker sheet
-      expect(find.text('ថ្លៃសាលា'), findsOneWidget);
-      await tester.tap(find.text('ថ្លៃសាលា'));
-      await tester.pumpAndSettle();
-
-      // Verify the 6th button now displays 'ថ្លៃសាលា'
+      // Verify the 6th button now automatically displays and selects 'ថ្លៃសាលា'
       expect(find.text('ថ្លៃសាលា'), findsOneWidget);
 
       // Enter amount and save
