@@ -67,7 +67,6 @@ class ExpenseCategory {
     dinner,
     fuel,
     coffee,
-    other,
   ];
 
   static const List<Color> autoColors = [

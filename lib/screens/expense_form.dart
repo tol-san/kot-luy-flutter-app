@@ -36,11 +36,6 @@ class _ExpenseFormState extends State<ExpenseForm> {
   late final _amount = TextEditingController(
     text: formatRielInput(widget.expense?.amount.toString() ?? ''),
   );
-  late final _otherTitle = TextEditingController(
-    text: widget.expense?.category == ExpenseCategory.other
-        ? (widget.expense?.title ?? '')
-        : '',
-  );
   late ExpenseCategory _category =
       widget.expense?.category ?? ExpenseCategory.breakfast;
   List<ExpenseCategory> _categories = ExpenseCategory.values;
@@ -103,11 +98,148 @@ class _ExpenseFormState extends State<ExpenseForm> {
     }
   }
 
+  Future<void> _showCategoryPickerSheet() async {
+    final selected = await showModalBottomSheet<ExpenseCategory>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(ctx).height * 0.75,
+        ),
+        decoration: const BoxDecoration(
+          color: paper,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 8),
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: line,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 6, 12, 6),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'ជ្រើសរើសប្រភេទចំណាយ',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: ink,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      key: const Key('closeCategoryPicker'),
+                      icon: const Icon(Icons.close_rounded, color: muted),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  itemCount: _categories.length,
+                  itemBuilder: (ctx, index) {
+                    final cat = _categories[index];
+                    final isSel = cat == _category;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Material(
+                        color: isSel ? cat.background : Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(
+                            color: isSel ? cat.color : line,
+                            width: isSel ? 1.5 : 1,
+                          ),
+                        ),
+                        child: ListTile(
+                        key: Key('picker_category_${cat.name}'),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        leading: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: cat.color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        title: Text(
+                          cat.label,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: isSel ? FontWeight.w700 : FontWeight.w600,
+                            color: isSel ? cat.color : ink,
+                          ),
+                        ),
+                        trailing: isSel
+                            ? Icon(Icons.check_circle_rounded, color: cat.color, size: 20)
+                            : null,
+                        onTap: () => Navigator.pop(ctx, cat),
+                      ),
+                    ),
+                  );
+                },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: const BorderSide(color: green),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.swap_vert_rounded, size: 18, color: green),
+                  label: const Text(
+                    'រៀបចំ ឬ បន្ថែមប្រភេទថ្មី',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: green,
+                    ),
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await _manageCategories();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selected != null && mounted) {
+      setState(() => _category = selected);
+    }
+  }
+
   @override
   void dispose() {
     _ticker?.cancel();
     _amount.dispose();
-    _otherTitle.dispose();
     super.dispose();
   }
 
@@ -118,9 +250,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
       _error = null;
     });
     try {
-      final title = _category == ExpenseCategory.other
-          ? (_otherTitle.text.trim().isEmpty ? 'ផ្សេងៗ' : _otherTitle.text.trim())
-          : _category.label;
+      final title = _category.label;
       final now = clock.now();
       var dateToSave = _isCustomDateTime ? _date : now;
       if (dateToSave.isAfter(now)) {
@@ -374,13 +504,22 @@ class _ExpenseFormState extends State<ExpenseForm> {
                 ),
                 const SizedBox(height: 10),
                 LayoutBuilder(
-                  builder: (context, constraints) => Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _categories
-                        .map(
-                          (c) => SizedBox(
-                            width: (constraints.maxWidth - 16) / 3,
+                  builder: (context, constraints) {
+                    final buttonWidth = (constraints.maxWidth - 16) / 3;
+                    final top5 = _categories.take(5).toList();
+                    final isCategoryInTop5 = top5.contains(_category);
+                    final moreButtonLabel =
+                        !isCategoryInTop5 ? _category.label : 'ច្រើនទៀត';
+                    final isMoreSelected = !isCategoryInTop5;
+                    final moreCategory = !isCategoryInTop5 ? _category : null;
+
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final c in top5)
+                          SizedBox(
+                            width: buttonWidth,
                             child: Semantics(
                               selected: c == _category,
                               child: Material(
@@ -425,24 +564,76 @@ class _ExpenseFormState extends State<ExpenseForm> {
                               ),
                             ),
                           ),
-                        )
-                        .toList(),
-                  ),
+                        SizedBox(
+                          width: buttonWidth,
+                          child: Semantics(
+                            selected: isMoreSelected,
+                            child: Material(
+                              color: isMoreSelected
+                                  ? (moreCategory?.background ??
+                                      const Color(0xFFF0F2EB))
+                                  : Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: BorderSide(
+                                  color: isMoreSelected
+                                      ? (moreCategory?.color ?? green)
+                                      : line,
+                                  width: isMoreSelected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: InkWell(
+                                key: const Key('category_more'),
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: _showCategoryPickerSheet,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
+                                    horizontal: 4,
+                                  ),
+                                  child: Center(
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            moreButtonLabel,
+                                            textAlign: TextAlign.center,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: isMoreSelected
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                              color: isMoreSelected
+                                                  ? (moreCategory?.color ??
+                                                      green)
+                                                  : muted,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Icon(
+                                          Icons.expand_more_rounded,
+                                          size: 14,
+                                          color: isMoreSelected
+                                              ? (moreCategory?.color ?? green)
+                                              : muted,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
-                if (_category == ExpenseCategory.other) ...[
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    key: const Key('customTitleInput'),
-                    controller: _otherTitle,
-                    autofocus: true,
-                    maxLength: 80,
-                    decoration: const InputDecoration(
-                      labelText: 'ឈ្មោះចំណាយផ្សេងៗ',
-                      hintText: 'ឧ. ទិញសៀវភៅ, កាត់សក់...',
-                      counterText: '',
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 20),
                 Row(
                   children: [

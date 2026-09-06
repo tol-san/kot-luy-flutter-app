@@ -121,16 +121,15 @@ void main() {
         path: path,
       );
       try {
-        // 1. Initial seed check
+        // 1. Initial seed check (5 default categories)
         final initialCats = await repo.getCategories();
-        expect(initialCats.length, 6);
+        expect(initialCats.length, 5);
         expect(initialCats.map((c) => c.name).toList(), [
           'breakfast',
           'lunch',
           'dinner',
           'fuel',
           'coffee',
-          'other',
         ]);
 
         // 2. Add custom category (only label provided, color is auto)
@@ -140,7 +139,7 @@ void main() {
         expect(customCat.color, isNotNull);
 
         final updatedCats = await repo.getCategories();
-        expect(updatedCats.length, 7);
+        expect(updatedCats.length, 6);
         expect(updatedCats.last.label, 'ថ្លៃផ្ទះ');
 
         // 3. Reorder categories (move custom to first)
@@ -174,14 +173,23 @@ void main() {
         expect(expenses.single.category.name, customCat.name);
         expect(expenses.single.category.label, 'ថ្លៃផ្ទះ');
 
-        // 5. Delete custom category -> expense reassigned to other
+        // 5. Delete category -> expense reassigned to first remaining category
         await repo.deleteCategory(customCat.name);
         final catsAfterDelete = await repo.getCategories();
-        expect(catsAfterDelete.length, 6);
+        expect(catsAfterDelete.length, 5);
         expect(catsAfterDelete.any((c) => c.name == customCat.name), isFalse);
 
         final expensesAfterDelete = await repo.all();
-        expect(expensesAfterDelete.single.category.name, ExpenseCategory.other.name);
+        expect(
+          expensesAfterDelete.single.category.name,
+          catsAfterDelete.first.name,
+        );
+
+        // 6. Any category (including defaults like coffee) can be deleted
+        await repo.deleteCategory('coffee');
+        final catsAfterCoffeeDelete = await repo.getCategories();
+        expect(catsAfterCoffeeDelete.length, 4);
+        expect(catsAfterCoffeeDelete.any((c) => c.name == 'coffee'), isFalse);
 
         // 6. Blank category name rejected
         await expectLater(

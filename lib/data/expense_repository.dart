@@ -41,6 +41,26 @@ class ExpenseRepository {
         },
       ),
     );
+    // Purge deprecated 'other' if present and reassign any existing expenses
+    try {
+      await db.transaction((txn) async {
+        final remaining = await txn.query(
+          'categories',
+          where: "id != 'other'",
+          orderBy: 'sort_order ASC',
+          limit: 1,
+        );
+        if (remaining.isNotEmpty) {
+          final fallbackId = remaining.first['id'] as String;
+          await txn.update(
+            'expenses',
+            {'category': fallbackId},
+            where: "category = 'other'",
+          );
+        }
+        await txn.delete('categories', where: "id = 'other'");
+      });
+    } catch (_) {}
     return ExpenseRepository(db);
   }
 
@@ -71,6 +91,8 @@ class ExpenseRepository {
       }
       await batch.commit(noResult: true);
     }
+    // Ensure deprecated 'other' is purged from categories table
+    await db.delete('categories', where: "id = 'other'");
   }
 
   Future<List<ExpenseCategory>> getCategories() async {
@@ -91,7 +113,6 @@ class ExpenseRepository {
         'dinner' => ExpenseCategory.dinner,
         'fuel' => ExpenseCategory.fuel,
         'coffee' => ExpenseCategory.coffee,
-        'other' => ExpenseCategory.other,
         _ => null,
       };
       return ExpenseCategory(
@@ -111,7 +132,7 @@ class ExpenseRepository {
     final current = await getCategories();
     final customCount = current.where((c) => c.isCustom).length;
     final color =
-        ExpenseCategory.autoColors[(customCount + 6) %
+        ExpenseCategory.autoColors[(customCount + 5) %
             ExpenseCategory.autoColors.length];
     final id = 'custom_${DateTime.now().millisecondsSinceEpoch}';
     final nextOrder = current.length;
@@ -135,14 +156,23 @@ class ExpenseRepository {
   }
 
   Future<void> deleteCategory(String id) async {
-    if (!id.startsWith('custom_')) return;
     await database.transaction((txn) async {
-      await txn.update(
-        'expenses',
-        {'category': 'other'},
-        where: 'category = ?',
+      final remaining = await txn.query(
+        'categories',
+        where: 'id != ?',
         whereArgs: [id],
+        orderBy: 'sort_order ASC',
+        limit: 1,
       );
+      if (remaining.isNotEmpty) {
+        final fallbackId = remaining.first['id'] as String;
+        await txn.update(
+          'expenses',
+          {'category': fallbackId},
+          where: 'category = ?',
+          whereArgs: [id],
+        );
+      }
       await txn.delete('categories', where: 'id = ?', whereArgs: [id]);
     });
   }

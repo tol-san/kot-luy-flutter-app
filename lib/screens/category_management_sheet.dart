@@ -77,12 +77,21 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
   }
 
   Future<void> _deleteCategory(ExpenseCategory category) async {
+    if (_categories.length <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('មិនអាចលុបបានទេ ត្រូវមានប្រភេទយ៉ាងហោចណាស់មួយ'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('លុបប្រភេទនេះ?'),
         content: Text(
-          '«${category.label}» នឹងត្រូវបានលុបចេញ។ រាល់ចំណាយដែលធ្លាប់ប្រើប្រភេទនេះ នឹងត្រូវប្តូរទៅ «ផ្សេងៗ» ដោយស្វ័យប្រវត្តិ។',
+          '«${category.label}» នឹងត្រូវបានលុបចេញពីបញ្ជីប្រភេទចំណាយ។',
         ),
         actions: [
           TextButton(
@@ -180,70 +189,71 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
             const Divider(height: 1),
             // Add Category input
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      key: const Key('addCategoryInput'),
-                      controller: _textController,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _addCategory(),
-                      decoration: InputDecoration(
-                        hintText: 'បញ្ចូលឈ្មោះប្រភេទថ្មី...',
-                        hintStyle: const TextStyle(fontSize: 13, color: muted),
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: line),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: line),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: green, width: 1.5),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+              child: SizedBox(
+                height: 48,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        key: const Key('addCategoryInput'),
+                        controller: _textController,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _addCategory(),
+                        decoration: InputDecoration(
+                          hintText: 'បញ្ចូលឈ្មោះប្រភេទថ្មី...',
+                          hintStyle: const TextStyle(fontSize: 13, color: muted),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: line),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: line),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: green, width: 1.5),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    key: const Key('addCategoryButton'),
-                    onPressed: _adding ? null : _addCategory,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: green,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      key: const Key('addCategoryButton'),
+                      onPressed: _adding ? null : _addCategory,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: green,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                      icon: _adding
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.add_rounded, size: 18),
+                      label: const Text(
+                        'បន្ថែម',
+                        style: TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
-                    icon: _adding
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.add_rounded, size: 18),
-                    label: const Text(
-                      'បន្ថែម',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             if (_loading)
@@ -257,18 +267,16 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
                   key: const Key('categoryReorderList'),
                   shrinkWrap: true,
                   buildDefaultDragHandles: false,
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
                   itemCount: _categories.length,
                   onReorderItem: _onReorderItem,
                   itemBuilder: (context, index) {
                     final cat = _categories[index];
                     return Container(
                       key: ValueKey(cat.name),
+                      height: 48,
                       margin: const EdgeInsets.symmetric(vertical: 4),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(14),
@@ -283,13 +291,13 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
                               child: Icon(
                                 Icons.drag_handle_rounded,
                                 color: muted,
-                                size: 22,
+                                size: 20,
                               ),
                             ),
                           ),
                           Container(
-                            width: 12,
-                            height: 12,
+                            width: 10,
+                            height: 10,
                             decoration: BoxDecoration(
                               color: cat.color,
                               shape: BoxShape.circle,
@@ -306,35 +314,15 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
                               ),
                             ),
                           ),
-                          if (cat.isCustom)
-                            IconButton(
-                              tooltip: 'លុបប្រភេទនេះ',
-                              icon: const Icon(
-                                Icons.delete_outline_rounded,
-                                color: Color(0xFFC26D6D),
-                                size: 20,
-                              ),
-                              onPressed: () => _deleteCategory(cat),
-                            )
-                          else
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF0F2EB),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'លំនាំដើម',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: muted,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
+                          IconButton(
+                            tooltip: 'លុបប្រភេទនេះ',
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: Color(0xFFC26D6D),
+                              size: 20,
                             ),
+                            onPressed: () => _deleteCategory(cat),
+                          ),
                         ],
                       ),
                     );

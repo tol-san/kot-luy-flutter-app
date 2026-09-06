@@ -60,13 +60,15 @@ class MemoryRepository implements ExpenseRepository {
   @override
   Future<void> deleteCategory(String id) async {
     categories.removeWhere((c) => c.name == id);
+    final fallback =
+        categories.isNotEmpty ? categories.first : ExpenseCategory.breakfast;
     for (var i = 0; i < items.length; i++) {
       if (items[i].category.name == id) {
         items[i] = Expense(
           id: items[i].id,
           title: items[i].title,
           amount: items[i].amount,
-          category: ExpenseCategory.other,
+          category: fallback,
           date: items[i].date,
           note: items[i].note,
         );
@@ -199,7 +201,7 @@ void main() {
         ('បាយថ្ងៃត្រង់', 12000, ExpenseCategory.lunch),
         ('កាហ្វេពេលព្រឹក', 6500, ExpenseCategory.coffee),
         ('ចាក់សាំង', 8000, ExpenseCategory.fuel),
-        ('ទិញសៀវភៅ', 18000, ExpenseCategory.other),
+        ('បាយល្ងាច', 18000, ExpenseCategory.dinner),
       ];
       for (var i = 0; i < samples.length; i++) {
         final s = samples[i];
@@ -303,40 +305,39 @@ void main() {
     await tester.tap(find.byKey(const Key('addExpense')));
     await tester.pumpAndSettle();
 
-    // Default category does not show custom title input
-    expect(find.byKey(const Key('customTitleInput')), findsNothing);
+    // Exactly 5 default categories + 1 'ច្រើនទៀត' button = 6 buttons
+    expect(find.byKey(const Key('category_breakfast')), findsOneWidget);
+    expect(find.byKey(const Key('category_lunch')), findsOneWidget);
+    expect(find.byKey(const Key('category_dinner')), findsOneWidget);
+    expect(find.byKey(const Key('category_fuel')), findsOneWidget);
+    expect(find.byKey(const Key('category_coffee')), findsOneWidget);
+    expect(find.byKey(const Key('category_more')), findsOneWidget);
+    expect(find.text('ច្រើនទៀត'), findsOneWidget);
 
-    // Tap ផ្សេងៗ
-    await tester.tap(find.byKey(const Key('category_other')));
+    // 'ផ្សេងៗ' button is removed
+    expect(find.byKey(const Key('category_other')), findsNothing);
+    expect(find.text('ផ្សេងៗ'), findsNothing);
+
+    // Tapping 'ច្រើនទៀត' opens the category picker sheet
+    await tester.tap(find.byKey(const Key('category_more')));
     await tester.pumpAndSettle();
 
-    // Now customTitleInput is visible
-    expect(find.byKey(const Key('customTitleInput')), findsOneWidget);
+    expect(find.text('ជ្រើសរើសប្រភេទចំណាយ'), findsOneWidget);
+    expect(find.byKey(const Key('picker_category_coffee')), findsOneWidget);
 
-    // Enter amount and custom title
+    // Select coffee from picker
+    await tester.tap(find.byKey(const Key('picker_category_coffee')));
+    await tester.pumpAndSettle();
+
+    // Enter amount and save
     await tester.enterText(find.byKey(const Key('amountInput')), '5000');
-    await tester.enterText(find.byKey(const Key('customTitleInput')), 'ទិញសៀវភៅ');
     await tester.ensureVisible(find.byKey(const Key('saveExpense')));
     await tester.tap(find.byKey(const Key('saveExpense')));
     await tester.pumpAndSettle();
 
-    expect(repo.items.single.category, ExpenseCategory.other);
-    expect(repo.items.single.title, 'ទិញសៀវភៅ');
+    expect(repo.items.single.category.name, 'coffee');
+    expect(repo.items.single.title, 'កាហ្វេ');
     expect(repo.items.single.amount, 5000);
-
-    // Empty customTitleInput defaults title to ផ្សេងៗ
-    await tester.tap(find.byKey(const Key('addExpense')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('category_other')));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('amountInput')), '3000');
-    await tester.ensureVisible(find.byKey(const Key('saveExpense')));
-    await tester.tap(find.byKey(const Key('saveExpense')));
-    await tester.pumpAndSettle();
-
-    expect(repo.items.last.category, ExpenseCategory.other);
-    expect(repo.items.last.title, 'ផ្សេងៗ');
-    expect(repo.items.last.amount, 3000);
   });
 
   testWidgets('date and time picker buttons are present in expense form', (
@@ -408,12 +409,18 @@ void main() {
       await tester.tap(find.byKey(const Key('closeCategorySheet')));
       await tester.pumpAndSettle();
 
-      // Verify the new category chip exists in the expense form
-      expect(find.text('ថ្លៃសាលា'), findsOneWidget);
+      // Since 'ថ្លៃសាលា' is category #6, tap 'ច្រើនទៀត' to open picker
+      expect(find.byKey(const Key('category_more')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('category_more')));
+      await tester.pumpAndSettle();
 
-      // Tap the new category chip to select it
+      // Pick 'ថ្លៃសាលា' from picker sheet
+      expect(find.text('ថ្លៃសាលា'), findsOneWidget);
       await tester.tap(find.text('ថ្លៃសាលា'));
       await tester.pumpAndSettle();
+
+      // Verify the 6th button now displays 'ថ្លៃសាលា'
+      expect(find.text('ថ្លៃសាលា'), findsOneWidget);
 
       // Enter amount and save
       await tester.enterText(find.byKey(const Key('amountInput')), '50000');
