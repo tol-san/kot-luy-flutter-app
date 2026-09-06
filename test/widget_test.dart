@@ -241,7 +241,7 @@ void main() {
     expect(find.byKey(const Key('customTitleInput')), findsNothing);
 
     // Tap ផ្សេងៗ
-    await tester.tap(find.text('ផ្សេងៗ'));
+    await tester.tap(find.byKey(const Key('category_other')));
     await tester.pumpAndSettle();
 
     // Now customTitleInput is visible
@@ -257,5 +257,19 @@ void main() {
     expect(repo.items.single.category, ExpenseCategory.other);
     expect(repo.items.single.title, 'ទិញសៀវភៅ');
     expect(repo.items.single.amount, 5000);
+
+    // Empty customTitleInput defaults title to ផ្សេងៗ
+    await tester.tap(find.byKey(const Key('addExpense')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('category_other')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('amountInput')), '3000');
+    await tester.ensureVisible(find.byKey(const Key('saveExpense')));
+    await tester.tap(find.byKey(const Key('saveExpense')));
+    await tester.pumpAndSettle();
+
+    expect(repo.items.last.category, ExpenseCategory.other);
+    expect(repo.items.last.title, 'ផ្សេងៗ');
+    expect(repo.items.last.amount, 3000);
   });
 }

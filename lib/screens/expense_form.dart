@@ -230,6 +230,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                                   ),
                                 ),
                                 child: InkWell(
+                                  key: Key('category_${c.name}'),
                                   borderRadius: BorderRadius.circular(14),
                                   onTap: () => setState(() => _category = c),
                                   child: Padding(
@@ -274,11 +275,6 @@ class _ExpenseFormState extends State<ExpenseForm> {
                       hintText: 'ឧ. ទិញសៀវភៅ, កាត់សក់...',
                       counterText: '',
                     ),
-                    validator: (value) =>
-                        _category == ExpenseCategory.other &&
-                                (value == null || value.trim().isEmpty)
-                            ? 'សូមបញ្ចូលឈ្មោះចំណាយ'
-                            : null,
                   ),
                 ],
                 const SizedBox(height: 20),
