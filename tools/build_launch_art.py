@@ -65,8 +65,8 @@ def write_vector(name, width, height, contents):
     (res/'drawable'/name).write_text(f'<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="{width}dp" android:height="{height}dp" android:viewportWidth="{width}" android:viewportHeight="{height}">{contents}</vector>\n')
 
 logo_path = f'<path android:fillColor="#00512C" android:fillType="evenOdd" android:pathData="{path}"/>'
-write_vector('launch_art.xml',300,108,f'<group android:translateY="{(108-300*h/w)/2}" android:scaleX="{300/w}" android:scaleY="{300/w}">{logo_path}</group>')
-# Maximize the wordmark while keeping its corners inside the 192dp safe circle.
-write_vector('launch_icon.xml',288,288,f'<group android:translateX="54" android:translateY="{(288-180*h/w)/2}" android:scaleX="{180/w}" android:scaleY="{180/w}">{logo_path}</group>')
+write_vector('launch_art.xml',340,120,f'<group android:translateY="{(120-340*h/w)/2}" android:scaleX="{340/w}" android:scaleY="{340/w}">{logo_path}</group>')
+# Maximize the wordmark up to the Android 12+ 192dp safe circle limit.
+write_vector('launch_icon.xml',288,288,f'<group android:translateX="50.5" android:translateY="{(288-187*h/w)/2}" android:scaleX="{187/w}" android:scaleY="{187/w}">{logo_path}</group>')
 write_vector('launch_brand.xml',200,80,f'<group android:translateX="10" android:translateY="8" android:scaleX="{180/w}" android:scaleY="{180/w}">{logo_path}</group>')
 print(f'Logo traced: {w}x{h}, {len(logo.encode())} bytes')
