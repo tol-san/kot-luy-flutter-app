@@ -2,7 +2,8 @@
     <application
         android:label="កត់លុយ"
         android:name="${applicationName}"
-        android:icon="@drawable/ic_kotloy">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"
