@@ -201,4 +201,35 @@ void main() {
     expect(tester.takeException(), isNull);
     tester.view.resetViewInsets();
   });
+  testWidgets('quick amount chips accumulate on tap and clear button resets amount', (
+    tester,
+  ) async {
+    final repo = MemoryRepository();
+    await mount(tester, repo);
+    await tester.tap(find.byKey(const Key('addExpense')));
+    await tester.pumpAndSettle();
+
+    final inputFinder = find.byKey(const Key('amountInput'));
+    expect(tester.widget<TextFormField>(inputFinder).controller!.text, '');
+
+    // Tap 5,000 -> 5,000
+    await tester.tap(find.text('5,000 ៛'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextFormField>(inputFinder).controller!.text, '5,000');
+
+    // Tap 5,000 again (double tap / 2nd tap) -> 10,000
+    await tester.tap(find.text('5,000 ៛'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextFormField>(inputFinder).controller!.text, '10,000');
+
+    // Tap 10,000 -> 20,000
+    await tester.tap(find.text('10,000 ៛'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextFormField>(inputFinder).controller!.text, '20,000');
+
+    // Tap clear button -> empty
+    await tester.tap(find.byKey(const Key('clearAmount')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextFormField>(inputFinder).controller!.text, '');
+  });
 }

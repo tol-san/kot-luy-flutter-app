@@ -154,26 +154,48 @@ class _ExpenseFormState extends State<ExpenseForm> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: [5000, 10000, 20000, 50000, 100000]
-                      .map(
-                        (v) => ActionChip(
-                          label: Text(
-                            riel(v),
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                          side: const BorderSide(color: line),
-                          onPressed: () {
-                            final text = formatRielInput('$v');
+                  children: [
+                    ...[5000, 10000, 20000, 50000, 100000].map(
+                      (v) => ActionChip(
+                        label: Text(
+                          riel(v),
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        side: const BorderSide(color: line),
+                        onPressed: () {
+                          final current =
+                              int.tryParse(_amount.text.replaceAll(',', '')) ??
+                              0;
+                          final next = current + v;
+                          if (next <= 999999999999) {
+                            final text = formatRielInput('$next');
                             _amount.value = TextEditingValue(
                               text: text,
                               selection: TextSelection.collapsed(
                                 offset: text.length,
                               ),
                             );
-                          },
-                        ),
-                      )
-                      .toList(),
+                          }
+                        },
+                      ),
+                    ),
+                    ActionChip(
+                      key: const Key('clearAmount'),
+                      avatar: const Icon(
+                        Icons.backspace_outlined,
+                        size: 13,
+                        color: muted,
+                      ),
+                      label: const Text(
+                        'សម្អាត',
+                        style: TextStyle(fontSize: 11, color: muted),
+                      ),
+                      side: const BorderSide(color: line),
+                      onPressed: () {
+                        _amount.clear();
+                      },
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 18),
                 const Text(
