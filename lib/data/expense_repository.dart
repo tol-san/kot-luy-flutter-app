@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
+import '../backup/drive_backup.dart';
 import '../models/expense.dart';
 
 class ExpenseRepository {
@@ -61,7 +64,9 @@ class ExpenseRepository {
         await txn.delete('categories', where: "id = 'other'");
       });
     } catch (_) {}
-    return ExpenseRepository(db);
+    final repo = ExpenseRepository(db);
+    unawaited(DriveBackup.dataChanged(db.path));
+    return repo;
   }
 
   static Future<void> _createCategoriesTable(DatabaseExecutor db) async {
@@ -144,6 +149,7 @@ class ExpenseRepository {
       'sort_order': nextOrder,
       'is_custom': 1,
     });
+    unawaited(DriveBackup.dataChanged(database.path));
 
     return ExpenseCategory(
       name: id,
@@ -175,6 +181,7 @@ class ExpenseRepository {
       }
       await txn.delete('categories', where: 'id = ?', whereArgs: [id]);
     });
+    unawaited(DriveBackup.dataChanged(database.path));
   }
 
   Future<void> reorderCategories(List<String> ids) async {
@@ -190,6 +197,7 @@ class ExpenseRepository {
       }
       await batch.commit(noResult: true);
     });
+    unawaited(DriveBackup.dataChanged(database.path));
   }
 
   Future<List<Expense>> all() async {
@@ -214,10 +222,12 @@ class ExpenseRepository {
       );
       if (count == 0) throw StateError('Expense no longer exists');
     }
+    unawaited(DriveBackup.dataChanged(database.path));
   }
 
   Future<void> delete(int id) async {
     await database.delete('expenses', where: 'id = ?', whereArgs: [id]);
+    unawaited(DriveBackup.dataChanged(database.path));
   }
 
   Future<void> close() => database.close();

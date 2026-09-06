@@ -7,6 +7,7 @@ import '../models/expense.dart';
 import '../theme.dart';
 import '../widgets/expense_chart.dart';
 import 'detail_screen.dart';
+import 'drive_backup_sheet.dart';
 import 'expense_form.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -302,6 +303,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         height: 36,
         fit: BoxFit.contain,
         semanticLabel: 'កត់លុយ',
+      ),
+      const Spacer(),
+      IconButton(
+        tooltip: 'បម្រុងទុកទិន្នន័យ (Google Drive)',
+        onPressed: () => DriveBackupSheet.show(
+          context,
+          widget.repository,
+          onDataRestored: _load,
+        ),
+        icon: Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEDF1E3),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(
+            Icons.cloud_sync_outlined,
+            color: green,
+            size: 20,
+          ),
+        ),
       ),
     ],
   );

@@ -1,0 +1,10 @@
+{
+  "projectId": "kot-luy",
+  "projectNumber": "739180174091",
+  "androidClientName": "Kot Luy Android Test",
+  "androidClientId": "739180174091-0nojdihffgod609qdd74llevqo6lk9cg.apps.googleusercontent.com",
+  "androidApplicationId": "com.kotloy.kot_loy",
+  "androidCertificateSha1": "E2:28:94:C0:34:10:0F:F4:35:2C:2E:05:78:EE:71:19:DC:8F:C7:6F",
+  "driveScope": "https://www.googleapis.com/auth/drive.file",
+  "backupFolderName": "Kot Luy Backups"
+}

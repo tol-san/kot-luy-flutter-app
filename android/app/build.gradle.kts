@@ -48,3 +48,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation("com.google.android.gms:play-services-auth:22.0.0")
+    implementation("androidx.work:work-runtime:2.11.2")
+}
