@@ -104,6 +104,11 @@ void main() {
       );
       expect(ExpensePeriod.month.contains(DateTime(2026, 1, 31), now), isTrue);
       expect(riel(12500), '12,500 ៛');
+      expect(formatTime(DateTime(2026, 9, 6, 16, 50)), '4:50 PM');
+      expect(formatTime(DateTime(2026, 9, 6, 9, 5)), '9:05 AM');
+      expect(formatTime(DateTime(2026, 9, 6, 0, 15)), '12:15 AM');
+      expect(formatTime(DateTime(2026, 9, 6, 12, 0)), '12:00 PM');
     },
   );
 }
+

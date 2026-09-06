@@ -83,7 +83,11 @@ class _ExpenseFormState extends State<ExpenseForm> {
       final title = _category == ExpenseCategory.other
           ? (_otherTitle.text.trim().isEmpty ? 'ផ្សេងៗ' : _otherTitle.text.trim())
           : _category.label;
-      final dateToSave = _isCustomDateTime ? _date : clock.now();
+      final now = clock.now();
+      var dateToSave = _isCustomDateTime ? _date : now;
+      if (dateToSave.isAfter(now)) {
+        dateToSave = now;
+      }
       await widget.repository.save(
         Expense(
           id: widget.expense?.id,
@@ -100,6 +104,68 @@ class _ExpenseFormState extends State<ExpenseForm> {
         setState(() {
           _saving = false;
           _error = 'រក្សាទុកមិនបាន សូមព្យាយាមម្ដងទៀត';
+        });
+      }
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final now = clock.now();
+    final initial = _date.isAfter(now) ? now : _date;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: now,
+    );
+    if (picked != null && mounted) {
+      _ticker?.cancel();
+      final newDate = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        _date.hour,
+        _date.minute,
+      );
+      setState(() {
+        _isCustomDateTime = true;
+        _date = newDate.isAfter(now) ? now : newDate;
+      });
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: _date.hour,
+        minute: _date.minute,
+      ),
+    );
+    if (pickedTime != null && mounted) {
+      _ticker?.cancel();
+      final now = clock.now();
+      final candidate = DateTime(
+        _date.year,
+        _date.month,
+        _date.day,
+        pickedTime.hour,
+        pickedTime.minute,
+      );
+      if (candidate.isAfter(now)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('មិនអាចកំណត់ម៉ោងលើសពីពេលបច្ចុប្បន្នបានទេ'),
+          ),
+        );
+        setState(() {
+          _isCustomDateTime = true;
+          _date = now;
+        });
+      } else {
+        setState(() {
+          _isCustomDateTime = true;
+          _date = candidate;
         });
       }
     }
@@ -307,7 +373,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                 Row(
                   children: [
                     Expanded(
-                      flex: 3,
+                      flex: 6,
                       child: Material(
                         color: Colors.white,
                         shape: RoundedRectangleBorder(
@@ -317,35 +383,10 @@ class _ExpenseFormState extends State<ExpenseForm> {
                         child: InkWell(
                           key: const Key('datePickerButton'),
                           borderRadius: BorderRadius.circular(16),
-                          onTap: () async {
-                            final now = clock.now();
-                            final effectiveLastDate =
-                                now.isAfter(_date) ? now : _date;
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: _date,
-                              firstDate: DateTime(2000),
-                              lastDate: effectiveLastDate.add(
-                                const Duration(days: 365),
-                              ),
-                            );
-                            if (picked != null && mounted) {
-                              _ticker?.cancel();
-                              setState(() {
-                                _isCustomDateTime = true;
-                                _date = DateTime(
-                                  picked.year,
-                                  picked.month,
-                                  picked.day,
-                                  _date.hour,
-                                  _date.minute,
-                                );
-                              });
-                            }
-                          },
+                          onTap: _pickDate,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
+                              horizontal: 12,
                               vertical: 16,
                             ),
                             child: Row(
@@ -355,7 +396,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                                   size: 18,
                                   color: green,
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     displayDate(_date),
@@ -377,9 +418,9 @@ class _ExpenseFormState extends State<ExpenseForm> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
-                      flex: 2,
+                      flex: 5,
                       child: Material(
                         color: Colors.white,
                         shape: RoundedRectangleBorder(
@@ -389,31 +430,10 @@ class _ExpenseFormState extends State<ExpenseForm> {
                         child: InkWell(
                           key: const Key('timePickerButton'),
                           borderRadius: BorderRadius.circular(16),
-                          onTap: () async {
-                            final pickedTime = await showTimePicker(
-                              context: context,
-                              initialTime: TimeOfDay(
-                                hour: _date.hour,
-                                minute: _date.minute,
-                              ),
-                            );
-                            if (pickedTime != null && mounted) {
-                              _ticker?.cancel();
-                              setState(() {
-                                _isCustomDateTime = true;
-                                _date = DateTime(
-                                  _date.year,
-                                  _date.month,
-                                  _date.day,
-                                  pickedTime.hour,
-                                  pickedTime.minute,
-                                );
-                              });
-                            }
-                          },
+                          onTap: _pickTime,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
+                              horizontal: 10,
                               vertical: 16,
                             ),
                             child: Row(
@@ -423,7 +443,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                                   size: 18,
                                   color: green,
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     formatTime(_date),

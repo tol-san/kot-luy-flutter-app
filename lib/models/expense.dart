@@ -143,9 +143,10 @@ String dayLabel(DateTime date, DateTime now) {
 }
 
 String formatTime(DateTime date) {
-  final hour = date.hour.toString().padLeft(2, '0');
+  final h = date.hour % 12 == 0 ? 12 : date.hour % 12;
   final minute = date.minute.toString().padLeft(2, '0');
-  return '$hour:$minute';
+  final period = date.hour >= 12 ? 'PM' : 'AM';
+  return '$h:$minute $period';
 }
 
 String formatExpenseDateTime(DateTime date, DateTime now) {
