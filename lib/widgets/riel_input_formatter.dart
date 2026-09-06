@@ -1,9 +1,23 @@
 import 'package:flutter/services.dart';
 
-String formatRielInput(String digits) => digits.replaceAllMapped(
-  RegExp(r'(\d)(?=(\d{3})+$)'),
-  (match) => '${match[1]},',
+String normalizeKhmerDigits(String input) => input.replaceAllMapped(
+  RegExp(r'[\u17E0-\u17E9]'),
+  (m) => (m[0]!.codeUnitAt(0) - 0x17E0).toString(),
 );
+
+String formatRielInput(String digits) {
+  final clean = normalizeKhmerDigits(digits).replaceAll(RegExp(r'[^0-9]'), '');
+  return clean.replaceAllMapped(
+    RegExp(r'(\d)(?=(\d{3})+$)'),
+    (match) => '${match[1]},',
+  );
+}
+
+int parseRielInput(String? text) {
+  if (text == null || text.isEmpty) return 0;
+  final clean = normalizeKhmerDigits(text).replaceAll(RegExp(r'[^0-9]'), '');
+  return int.tryParse(clean) ?? 0;
+}
 
 class RielInputFormatter extends TextInputFormatter {
   @override
@@ -12,7 +26,7 @@ class RielInputFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     if (!newValue.composing.isCollapsed) return newValue;
-    var text = newValue.text;
+    var text = normalizeKhmerDigits(newValue.text);
     var cursor = newValue.selection.extentOffset.clamp(0, text.length);
 
     // Backspacing a separator removes the preceding digit, so the cursor

@@ -88,7 +88,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
         Expense(
           id: widget.expense?.id,
           title: title,
-          amount: int.parse(_amount.text.replaceAll(',', '')),
+          amount: parseRielInput(_amount.text),
           category: _category,
           date: dateToSave,
           note: '',
@@ -152,6 +152,8 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   controller: _amount,
                   keyboardType: TextInputType.number,
                   inputFormatters: [RielInputFormatter()],
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  onChanged: (_) => _form.currentState?.validate(),
                   style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w700,
@@ -174,10 +176,9 @@ class _ExpenseFormState extends State<ExpenseForm> {
                     ),
                   ),
                   validator: (value) =>
-                      (int.tryParse((value ?? '').replaceAll(',', '')) ?? 0) <=
-                          0
-                      ? 'សូមបញ្ចូលចំនួនប្រាក់លើសពី 0'
-                      : null,
+                      parseRielInput(value) <= 0
+                          ? 'សូមបញ្ចូលចំនួនប្រាក់លើសពី 0'
+                          : null,
                 ),
                 const SizedBox(height: 10),
                 Wrap(
@@ -193,9 +194,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                         ),
                         side: const BorderSide(color: line),
                         onPressed: () {
-                          final current =
-                              int.tryParse(_amount.text.replaceAll(',', '')) ??
-                              0;
+                          final current = parseRielInput(_amount.text);
                           final next = current + v;
                           if (next <= 999999999999) {
                             final text = formatRielInput('$next');
@@ -205,6 +204,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                                 offset: text.length,
                               ),
                             );
+                            _form.currentState?.validate();
                           }
                         },
                       ),
@@ -223,6 +223,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                       side: const BorderSide(color: line),
                       onPressed: () {
                         _amount.clear();
+                        _form.currentState?.validate();
                       },
                     ),
                   ],

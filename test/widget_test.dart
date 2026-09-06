@@ -84,7 +84,10 @@ void main() {
       await tester.tap(find.byKey(const Key('saveExpense')));
       await tester.pumpAndSettle();
       expect(repo.items, isEmpty);
+      expect(find.text('សូមបញ្ចូលចំនួនប្រាក់លើសពី 0'), findsOneWidget);
       await tester.enterText(find.byKey(const Key('amountInput')), '12500');
+      await tester.pumpAndSettle();
+      expect(find.text('សូមបញ្ចូលចំនួនប្រាក់លើសពី 0'), findsNothing);
       expect(
         tester
             .widget<TextFormField>(find.byKey(const Key('amountInput')))

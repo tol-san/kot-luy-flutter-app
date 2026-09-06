@@ -48,4 +48,14 @@ void main() {
     expect(delete.text, '2,000');
     expect(delete.selection.extentOffset, 3);
   });
+
+  test('normalizes Khmer numerals and parses accurately', () {
+    expect(normalizeKhmerDigits('១០០០០០'), '100000');
+    expect(formatRielInput('១០០០០០'), '100,000');
+    expect(parseRielInput('១០០,០០០'), 100000);
+    expect(parseRielInput('100,000'), 100000);
+    expect(parseRielInput(''), 0);
+    expect(parseRielInput(null), 0);
+  });
 }
+
