@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 import '../data/expense_repository.dart';
 import '../models/expense.dart';
 import '../theme.dart';
+import '../widgets/category_input_row.dart';
+import '../widgets/category_list_item.dart';
+
+// ---------------------------------------------------------------------------
+// Result type
+// ---------------------------------------------------------------------------
 
 class CategoryManagementResult {
   const CategoryManagementResult({
@@ -13,6 +19,10 @@ class CategoryManagementResult {
   final List<ExpenseCategory> categories;
   final ExpenseCategory? selectedCategory;
 }
+
+// ---------------------------------------------------------------------------
+// Sheet widget
+// ---------------------------------------------------------------------------
 
 class CategoryManagementSheet extends StatefulWidget {
   const CategoryManagementSheet({
@@ -35,32 +45,28 @@ class CategoryManagementSheet extends StatefulWidget {
   );
 
   @override
-  State<CategoryManagementSheet> createState() => _CategoryManagementSheetState();
+  State<CategoryManagementSheet> createState() =>
+      _CategoryManagementSheetState();
 }
 
+// ---------------------------------------------------------------------------
+// State – owns all business logic; delegates UI to extracted widgets
+// ---------------------------------------------------------------------------
+
 class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
-  final _textController = TextEditingController();
-  final _focusNode = FocusNode();
-  bool _isFocused = false;
   List<ExpenseCategory> _categories = [];
   bool _loading = true;
   bool _adding = false;
 
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
+
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(() {
-      if (mounted) setState(() => _isFocused = _focusNode.hasFocus);
-    });
     _loadCategories();
   }
 
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    _textController.dispose();
-    super.dispose();
-  }
+  // ── Data helpers ──────────────────────────────────────────────────────────
 
   Future<void> _loadCategories() async {
     final list = await widget.repository.getCategories();
@@ -73,12 +79,11 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
     }
   }
 
-  Future<void> _addCategory() async {
-    final text = _textController.text.trim();
-    if (text.isEmpty || _adding) return;
+  Future<void> _addCategory(String name) async {
+    if (_adding) return;
     setState(() => _adding = true);
     try {
-      final newCat = await widget.repository.addCategory(text);
+      final newCat = await widget.repository.addCategory(name);
       _categories.add(newCat);
       widget.onCategoriesChanged?.call(_categories);
       if (mounted) {
@@ -143,6 +148,8 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
     widget.onCategoriesChanged?.call(_categories);
   }
 
+  // ── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
@@ -161,214 +168,90 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: line,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 4, 12, 4),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'រៀបចំប្រភេទចំណាយ',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: ink,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'អូសសញ្ញា ☰ ដើម្បីប្តូរលំដាប់មុខក្រោយ',
-                          style: TextStyle(fontSize: 11, color: muted),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    key: const Key('closeCategorySheet'),
-                    tooltip: 'បិទ',
-                    icon: const Icon(Icons.close_rounded, color: muted),
-                    onPressed: () => Navigator.pop(
-                      context,
-                      CategoryManagementResult(
-                        categories: _categories,
-                        selectedCategory: null,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildDragHandle(),
+            _buildHeader(),
             const Divider(height: 1),
-            // Add Category input
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-              child: SizedBox(
-                height: 44,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: _isFocused ? green : line,
-                            width: _isFocused ? 1.5 : 1,
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        child: TextField(
-                          key: const Key('addCategoryInput'),
-                          controller: _textController,
-                          focusNode: _focusNode,
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => _addCategory(),
-                          style: const TextStyle(fontSize: 13, color: ink),
-                          decoration: const InputDecoration(
-                            hintText: 'បញ្ចូលឈ្មោះប្រភេទថ្មី...',
-                            hintStyle: TextStyle(fontSize: 13, color: muted),
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            errorBorder: InputBorder.none,
-                            disabledBorder: InputBorder.none,
-                            filled: false,
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      height: 44,
-                      child: FilledButton.icon(
-                        key: const Key('addCategoryButton'),
-                        onPressed: _adding ? null : _addCategory,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: green,
-                          elevation: 0,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          minimumSize: Size.zero,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        icon: _adding
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.add_rounded, size: 16),
-                        label: const Text(
-                          'បន្ថែម',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (_loading)
-              const Padding(
-                padding: EdgeInsets.all(40),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else
-              Flexible(
-                child: ReorderableListView.builder(
-                  key: const Key('categoryReorderList'),
-                  shrinkWrap: true,
-                  buildDefaultDragHandles: false,
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-                  itemCount: _categories.length,
-                  onReorderItem: _onReorderItem,
-                  itemBuilder: (context, index) {
-                    final cat = _categories[index];
-                    return Container(
-                      key: ValueKey(cat.name),
-                      height: 48,
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: line),
-                      ),
-                      child: Row(
-                        children: [
-                          ReorderableDragStartListener(
-                            index: index,
-                            child: const Padding(
-                              padding: EdgeInsets.only(right: 12),
-                              child: Icon(
-                                Icons.drag_handle_rounded,
-                                color: muted,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: cat.color,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              cat.label,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: ink,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: 'លុបប្រភេទនេះ',
-                            icon: const Icon(
-                              Icons.delete_outline_rounded,
-                              color: Color(0xFFC26D6D),
-                              size: 20,
-                            ),
-                            onPressed: () => _deleteCategory(cat),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
+            CategoryInputRow(onAdd: _addCategory, isAdding: _adding),
+            _loading ? _buildLoader() : _buildList(),
           ],
         ),
       ),
     );
   }
+
+  // ── Private UI helpers ────────────────────────────────────────────────────
+
+  Widget _buildDragHandle() => Center(
+    child: Container(
+      margin: const EdgeInsets.only(top: 12, bottom: 8),
+      width: 36,
+      height: 4,
+      decoration: BoxDecoration(
+        color: line,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    ),
+  );
+
+  Widget _buildHeader() => Padding(
+    padding: const EdgeInsets.fromLTRB(22, 4, 12, 4),
+    child: Row(
+      children: [
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'រៀបចំប្រភេទចំណាយ',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: ink,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'អូសសញ្ញា ☰ ដើម្បីប្តូរលំដាប់មុខក្រោយ',
+                style: TextStyle(fontSize: 11, color: muted),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          key: const Key('closeCategorySheet'),
+          tooltip: 'បិទ',
+          icon: const Icon(Icons.close_rounded, color: muted),
+          onPressed: () => Navigator.pop(
+            context,
+            CategoryManagementResult(
+              categories: _categories,
+              selectedCategory: null,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildLoader() => const Padding(
+    padding: EdgeInsets.all(40),
+    child: Center(child: CircularProgressIndicator()),
+  );
+
+  Widget _buildList() => Flexible(
+    child: ReorderableListView.builder(
+      key: const Key('categoryReorderList'),
+      shrinkWrap: true,
+      buildDefaultDragHandles: false,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+      itemCount: _categories.length,
+      onReorderItem: _onReorderItem,
+      itemBuilder: (_, index) => CategoryListItem(
+        key: ValueKey(_categories[index].name),
+        category: _categories[index],
+        index: index,
+        onDelete: () => _deleteCategory(_categories[index]),
+      ),
+    ),
+  );
 }
