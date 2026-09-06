@@ -18,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<Expense> _expenses = [];
+  List<ExpenseCategory> _categories = ExpenseCategory.values;
   ExpensePeriod _period = ExpensePeriod.month;
   ExpenseCategory? _category;
   String _query = '';
@@ -48,9 +49,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _load() async {
     try {
       final expenses = await widget.repository.all();
+      final categories = await widget.repository.getCategories();
       if (mounted) {
         setState(() {
           _expenses = expenses;
+          _categories = categories;
           _loading = false;
           _error = false;
         });
@@ -68,8 +71,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<Expense> get _inPeriod =>
       _expenses.where((e) => _period.contains(e.date, clock.now())).toList();
   Future<void> _add() async {
-    final saved = await showExpenseForm(context, widget.repository);
-    if (saved == true && mounted) {
+    await showExpenseForm(context, widget.repository);
+    if (mounted) {
       await _load();
     }
   }
@@ -158,14 +161,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 onSelected: (value) => setState(
                                   () => _category = value == 'all'
                                       ? null
-                                      : ExpenseCategory.values.byName(value),
+                                      : _categories.firstWhere(
+                                          (c) => c.name == value,
+                                          orElse: () =>
+                                              ExpenseCategory.fromName(
+                                                value,
+                                                _categories,
+                                              ),
+                                        ),
                                 ),
                                 itemBuilder: (_) => [
                                   const PopupMenuItem(
                                     value: 'all',
                                     child: Text('ប្រភេទទាំងអស់'),
                                   ),
-                                  ...ExpenseCategory.values.map(
+                                  ..._categories.map(
                                     (c) => PopupMenuItem(
                                       value: c.name,
                                       child: Text(c.label),
@@ -337,9 +347,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _summary() {
     final expenses = _inPeriod;
     final total = expenses.fold(0, (a, e) => a + e.amount);
-    final categories = ExpenseCategory.values
-        .where((c) => expenses.any((e) => e.category == c))
-        .toList();
+    final presentCategories = <String, ExpenseCategory>{
+      for (final e in expenses) e.category.name: e.category,
+    };
+    final categories = _categories.where((c) => presentCategories.containsKey(c.name)).toList();
+    for (final c in presentCategories.values) {
+      if (!categories.any((x) => x.name == c.name)) {
+        categories.add(c);
+      }
+    }
     return Container(
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
@@ -597,10 +613,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<Widget> _reportWidgets() {
     final expenses = _inPeriod;
     final total = expenses.fold(0, (a, e) => a + e.amount);
+    final presentMap = <String, ExpenseCategory>{
+      for (final c in _categories) c.name: c,
+      for (final e in expenses) e.category.name: e.category,
+    };
     final totals = {
-      for (final c in ExpenseCategory.values)
+      for (final c in presentMap.values)
         c: expenses
-            .where((e) => e.category == c)
+            .where((e) => e.category.name == c.name)
             .fold(0, (a, e) => a + e.amount),
     };
     final sorted = totals.entries.where((e) => e.value > 0).toList()

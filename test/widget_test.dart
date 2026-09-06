@@ -9,6 +9,7 @@ import 'package:sqflite/sqflite.dart';
 
 class MemoryRepository implements ExpenseRepository {
   final List<Expense> items = [];
+  final List<ExpenseCategory> categories = [...ExpenseCategory.values];
   @override
   Database get database => throw UnsupportedError('Test double');
   @override
@@ -32,6 +33,56 @@ class MemoryRepository implements ExpenseRepository {
 
   @override
   Future<void> delete(int id) async => items.removeWhere((e) => e.id == id);
+
+  @override
+  Future<List<ExpenseCategory>> getCategories() async =>
+      List.unmodifiable(categories);
+
+  @override
+  Future<ExpenseCategory> addCategory(String label) async {
+    final clean = label.trim();
+    final customCount = categories.where((c) => c.isCustom).length;
+    final color = ExpenseCategory.autoColors[(customCount + 6) %
+        ExpenseCategory.autoColors.length];
+    final id = 'custom_${DateTime.now().millisecondsSinceEpoch}_$customCount';
+    final cat = ExpenseCategory(
+      name: id,
+      label: clean,
+      icon: Icons.local_offer_outlined,
+      color: color,
+      background: ExpenseCategory.autoBackground(color),
+      isCustom: true,
+    );
+    categories.add(cat);
+    return cat;
+  }
+
+  @override
+  Future<void> deleteCategory(String id) async {
+    categories.removeWhere((c) => c.name == id);
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].category.name == id) {
+        items[i] = Expense(
+          id: items[i].id,
+          title: items[i].title,
+          amount: items[i].amount,
+          category: ExpenseCategory.other,
+          date: items[i].date,
+          note: items[i].note,
+        );
+      }
+    }
+  }
+
+  @override
+  Future<void> reorderCategories(List<String> ids) async {
+    final map = {for (final c in categories) c.name: c};
+    categories.clear();
+    for (final id in ids) {
+      if (map.containsKey(id)) categories.add(map[id]!);
+    }
+  }
+
   @override
   Future<void> close() async {}
 }
@@ -316,6 +367,67 @@ void main() {
 
     expect(repo.items.isNotEmpty, isTrue);
   });
+
+  testWidgets(
+    'user can create custom category by name only (no icon picker) and reorder',
+    (tester) async {
+      final repo = MemoryRepository();
+      await mount(tester, repo);
+
+      // Open Add Expense form
+      await tester.tap(find.byKey(const Key('addExpense')));
+      await tester.pumpAndSettle();
+
+      // Tap manage categories button
+      expect(find.byKey(const Key('manageCategoriesButton')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('manageCategoriesButton')));
+      await tester.pumpAndSettle();
+
+      // Verify the management sheet is open
+      expect(find.text('រៀបចំប្រភេទចំណាយ'), findsOneWidget);
+      expect(find.byKey(const Key('addCategoryInput')), findsOneWidget);
+      expect(find.byKey(const Key('addCategoryButton')), findsOneWidget);
+
+      // Verify there is NO icon picker in the UI
+      expect(find.text('ជ្រើសរើស Icon'), findsNothing);
+      expect(find.text('Icon'), findsNothing);
+      expect(find.byType(DropdownButton), findsNothing);
+
+      // Add a custom category: user only inputs the name
+      await tester.enterText(
+        find.byKey(const Key('addCategoryInput')),
+        'ថ្លៃសាលា',
+      );
+      await tester.tap(find.byKey(const Key('addCategoryButton')));
+      await tester.pumpAndSettle();
+
+      // Verify it appears in the reorderable list
+      expect(find.text('ថ្លៃសាលា'), findsOneWidget);
+
+      // Close the management sheet
+      await tester.tap(find.byKey(const Key('closeCategorySheet')));
+      await tester.pumpAndSettle();
+
+      // Verify the new category chip exists in the expense form
+      expect(find.text('ថ្លៃសាលា'), findsOneWidget);
+
+      // Tap the new category chip to select it
+      await tester.tap(find.text('ថ្លៃសាលា'));
+      await tester.pumpAndSettle();
+
+      // Enter amount and save
+      await tester.enterText(find.byKey(const Key('amountInput')), '50000');
+      await tester.ensureVisible(find.byKey(const Key('saveExpense')));
+      await tester.tap(find.byKey(const Key('saveExpense')));
+      await tester.pumpAndSettle();
+
+      // Verify expense saved with custom category
+      expect(repo.items.length, 1);
+      expect(repo.items.first.category.label, 'ថ្លៃសាលា');
+      expect(repo.items.first.category.isCustom, isTrue);
+      expect(repo.items.first.amount, 50000);
+    },
+  );
 }
 
 

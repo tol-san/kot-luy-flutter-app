@@ -110,5 +110,89 @@ void main() {
       expect(formatTime(DateTime(2026, 9, 6, 12, 0)), '12:00 PM');
     },
   );
+
+  test(
+    'categories seed defaults, create custom with auto color, reorder and delete',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('kot_luy_cat_test_');
+      final path = '${directory.path}/expenses.db';
+      var repo = await ExpenseRepository.open(
+        factory: databaseFactoryFfi,
+        path: path,
+      );
+      try {
+        // 1. Initial seed check
+        final initialCats = await repo.getCategories();
+        expect(initialCats.length, 6);
+        expect(initialCats.map((c) => c.name).toList(), [
+          'breakfast',
+          'lunch',
+          'dinner',
+          'fuel',
+          'coffee',
+          'other',
+        ]);
+
+        // 2. Add custom category (only label provided, color is auto)
+        final customCat = await repo.addCategory('ថ្លៃផ្ទះ');
+        expect(customCat.label, 'ថ្លៃផ្ទះ');
+        expect(customCat.isCustom, isTrue);
+        expect(customCat.color, isNotNull);
+
+        final updatedCats = await repo.getCategories();
+        expect(updatedCats.length, 7);
+        expect(updatedCats.last.label, 'ថ្លៃផ្ទះ');
+
+        // 3. Reorder categories (move custom to first)
+        final newOrder = [
+          customCat.name,
+          ...initialCats.map((c) => c.name),
+        ];
+        await repo.reorderCategories(newOrder);
+
+        // Reopen database to verify persistence of reordering
+        await repo.close();
+        repo = await ExpenseRepository.open(
+          factory: databaseFactoryFfi,
+          path: path,
+        );
+
+        final reordered = await repo.getCategories();
+        expect(reordered.first.name, customCat.name);
+        expect(reordered.first.label, 'ថ្លៃផ្ទះ');
+
+        // 4. Save expense with custom category
+        await repo.save(
+          Expense(
+            title: 'បង់ថ្លៃផ្ទះប្រចាំខែ',
+            amount: 200000,
+            category: customCat,
+            date: DateTime(2026, 9, 6),
+          ),
+        );
+        final expenses = await repo.all();
+        expect(expenses.single.category.name, customCat.name);
+        expect(expenses.single.category.label, 'ថ្លៃផ្ទះ');
+
+        // 5. Delete custom category -> expense reassigned to other
+        await repo.deleteCategory(customCat.name);
+        final catsAfterDelete = await repo.getCategories();
+        expect(catsAfterDelete.length, 6);
+        expect(catsAfterDelete.any((c) => c.name == customCat.name), isFalse);
+
+        final expensesAfterDelete = await repo.all();
+        expect(expensesAfterDelete.single.category.name, ExpenseCategory.other.name);
+
+        // 6. Blank category name rejected
+        await expectLater(
+          repo.addCategory('   '),
+          throwsArgumentError,
+        );
+      } finally {
+        await repo.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
 }
 

@@ -7,6 +7,7 @@ import '../data/expense_repository.dart';
 import '../models/expense.dart';
 import '../theme.dart';
 import '../widgets/riel_input_formatter.dart';
+import 'category_management_sheet.dart';
 
 Future<bool?> showExpenseForm(
   BuildContext context,
@@ -42,6 +43,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
   );
   late ExpenseCategory _category =
       widget.expense?.category ?? ExpenseCategory.breakfast;
+  List<ExpenseCategory> _categories = ExpenseCategory.values;
   late DateTime _date = widget.expense?.date ?? clock.now();
   late bool _isCustomDateTime = widget.expense != null;
   Timer? _ticker;
@@ -51,6 +53,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
   @override
   void initState() {
     super.initState();
+    _loadCategories();
     if (!_isCustomDateTime) {
       _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
         if (!_isCustomDateTime && mounted) {
@@ -62,6 +65,41 @@ class _ExpenseFormState extends State<ExpenseForm> {
           }
         }
       });
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    final list = await widget.repository.getCategories();
+    if (mounted) {
+      setState(() {
+        _categories = list;
+        if (widget.expense != null) {
+          _category = list.firstWhere(
+            (c) => c.name == widget.expense!.category.name,
+            orElse: () => widget.expense!.category,
+          );
+        } else if (!_categories.any((c) => c == _category)) {
+          _category = _categories.first;
+        }
+      });
+    }
+  }
+
+  Future<void> _manageCategories() async {
+    final updated = await CategoryManagementSheet.show(
+      context,
+      widget.repository,
+    );
+    if (!mounted) return;
+    if (updated != null) {
+      setState(() {
+        _categories = updated;
+        if (!_categories.any((c) => c == _category)) {
+          _category = _categories.first;
+        }
+      });
+    } else {
+      await _loadCategories();
     }
   }
 
@@ -295,16 +333,51 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   ],
                 ),
                 const SizedBox(height: 18),
-                const Text(
-                  'ប្រភេទចំណាយ',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                Row(
+                  children: [
+                    const Text(
+                      'ប្រភេទចំណាយ',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const Spacer(),
+                    InkWell(
+                      key: const Key('manageCategoriesButton'),
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: _manageCategories,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.swap_vert_rounded,
+                              size: 16,
+                              color: green,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'រៀបចំ ឬ បន្ថែម',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: green,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 LayoutBuilder(
                   builder: (context, constraints) => Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: ExpenseCategory.values
+                    children: _categories
                         .map(
                           (c) => SizedBox(
                             width: (constraints.maxWidth - 16) / 3,
@@ -335,6 +408,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                                         c.label,
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: c == _category

@@ -63,7 +63,7 @@ class _DonutPainter extends CustomPainter {
     final sum = totals.values.fold(0, (a, b) => a + b);
     if (sum == 0) return;
     var start = -math.pi / 2;
-    for (final category in ExpenseCategory.values) {
+    for (final category in totals.keys) {
       final value = totals[category] ?? 0;
       if (value == 0) continue;
       final sweep = value / sum * math.pi * 2;
