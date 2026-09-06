@@ -115,7 +115,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 children: [
                   _row(
                     Icons.grid_view_rounded,
-                    'ប្រភេទ',
+                    'មុខចំណាយ',
                     _expense.category.label,
                   ),
                   const Divider(height: 32),

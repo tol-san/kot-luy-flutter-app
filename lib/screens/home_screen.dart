@@ -9,6 +9,7 @@ import '../widgets/expense_chart.dart';
 import 'detail_screen.dart';
 import 'drive_backup_sheet.dart';
 import 'expense_form.dart';
+import 'pdf_export_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.repository});
@@ -27,6 +28,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _error = false;
   bool _reports = false;
   bool _search = false;
+  bool _isSelecting = false;
+  final Set<int> _selectedIds = {};
+  bool _expandedCategoryLegend = false;
   final _searchController = TextEditingController();
   @override
   void initState() {
@@ -71,15 +75,85 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   List<Expense> get _inPeriod =>
       _expenses.where((e) => _period.contains(e.date, clock.now())).toList();
+
+  List<Expense> get _filteredExpenses => _inPeriod
+      .where(
+        (e) =>
+            (_category == null || e.category == _category) &&
+            (_query.isEmpty ||
+                e.title.toLowerCase().contains(_query) ||
+                e.note.toLowerCase().contains(_query)),
+      )
+      .toList();
+
   Future<void> _add() async {
+    setState(() {
+      _isSelecting = false;
+      _selectedIds.clear();
+    });
     await showExpenseForm(context, widget.repository);
     if (mounted) {
       await _load();
     }
   }
 
+  Future<void> _confirmDeleteSelected() async {
+    final count = _selectedIds.length;
+    if (count == 0) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('លុបចំណាយដែលបានជ្រើសរើស?'),
+        content: Text(
+          'តើអ្នកប្រាកដជាចង់លុបចំណាយចំនួន $count នេះមែនទេ? សកម្មភាពនេះមិនអាចត្រឡប់ក្រោយបានទេ។',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('ទុកវិញ'),
+          ),
+          TextButton(
+            key: const Key('confirmBulkDeleteButton'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'លុប ($count)',
+              style: const TextStyle(color: Color(0xFFAD5347)),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      final idsToDelete = _selectedIds.toList();
+      await widget.repository.deleteMultiple(idsToDelete);
+      if (mounted) {
+        setState(() {
+          _selectedIds.clear();
+          _isSelecting = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('បានលុបចំណាយចំនួន $count រួចរាល់'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        await _load();
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_isSelecting,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop && _isSelecting) {
+        setState(() {
+          _isSelecting = false;
+          _selectedIds.clear();
+        });
+      }
+    },
+    child: Scaffold(
     body: SafeArea(
       bottom: false,
       child: Center(
@@ -124,68 +198,164 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         if (_reports)
                           ..._reportWidgets()
                         else ...[
-                          Row(
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'បញ្ជីចំណាយ',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
+                          if (_isSelecting)
+                            Row(
+                              children: [
+                                IconButton(
+                                  key: const Key('cancelSelectionButton'),
+                                  tooltip: 'បោះបង់',
+                                  onPressed: () => setState(() {
+                                    _isSelecting = false;
+                                    _selectedIds.clear();
+                                  }),
+                                  icon: const Icon(
+                                    Icons.close_rounded,
+                                    color: ink,
                                   ),
                                 ),
-                              ),
-                              IconButton(
-                                tooltip: 'ស្វែងរកចំណាយ',
-                                onPressed: () => setState(() {
-                                  _search = !_search;
-                                  if (!_search) {
-                                    _query = '';
-                                    _searchController.clear();
-                                  }
-                                }),
-                                icon: Icon(
-                                  _search
-                                      ? Icons.search_off
-                                      : Icons.search_rounded,
-                                  color: ink,
-                                  size: 23,
-                                ),
-                              ),
-                              PopupMenuButton<String>(
-                                tooltip: 'ច្រោះតាមប្រភេទ',
-                                icon: Icon(
-                                  Icons.tune_rounded,
-                                  color: _category == null ? muted : green,
-                                  size: 22,
-                                ),
-                                onSelected: (value) => setState(
-                                  () => _category = value == 'all'
-                                      ? null
-                                      : _categories.firstWhere(
-                                          (c) => c.name == value,
-                                          orElse: () =>
-                                              ExpenseCategory.fromName(
-                                                value,
-                                                _categories,
-                                              ),
-                                        ),
-                                ),
-                                itemBuilder: (_) => [
-                                  const PopupMenuItem(
-                                    value: 'all',
-                                    child: Text('ប្រភេទទាំងអស់'),
-                                  ),
-                                  ..._categories.map(
-                                    (c) => PopupMenuItem(
-                                      value: c.name,
-                                      child: Text(c.label),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    _selectedIds.isEmpty
+                                        ? 'ជ្រើសរើសចំណាយ'
+                                        : 'បានជ្រើសរើស ${_selectedIds.length}',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: ink,
                                     ),
                                   ),
-                                ],
-                              ),
-                            ],
-                          ),
+                                ),
+                                IconButton(
+                                  key: const Key('selectAllButton'),
+                                  tooltip: _selectedIds.length ==
+                                              _filteredExpenses.length &&
+                                          _filteredExpenses.isNotEmpty
+                                      ? 'ដោះជម្រើសទាំងអស់'
+                                      : 'ជ្រើសរើសទាំងអស់',
+                                  icon: Icon(
+                                    _selectedIds.length ==
+                                                _filteredExpenses.length &&
+                                            _filteredExpenses.isNotEmpty
+                                        ? Icons.deselect_rounded
+                                        : Icons.select_all_rounded,
+                                    color: ink,
+                                    size: 22,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      final currentFilteredIds =
+                                          _filteredExpenses
+                                              .map((e) => e.id)
+                                              .whereType<int>()
+                                              .toSet();
+                                      if (_selectedIds.containsAll(
+                                        currentFilteredIds,
+                                      )) {
+                                        _selectedIds.removeAll(
+                                          currentFilteredIds,
+                                        );
+                                      } else {
+                                        _selectedIds.addAll(currentFilteredIds);
+                                      }
+                                    });
+                                  },
+                                ),
+                                IconButton(
+                                  key: const Key(
+                                    'deleteSelectedExpensesButton',
+                                  ),
+                                  tooltip: 'លុប',
+                                  icon: Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: _selectedIds.isEmpty
+                                        ? muted
+                                        : const Color(0xFFAD5347),
+                                    size: 22,
+                                  ),
+                                  onPressed: _selectedIds.isEmpty
+                                      ? null
+                                      : _confirmDeleteSelected,
+                                ),
+                              ],
+                            )
+                          else
+                            Row(
+                              children: [
+                                const Expanded(
+                                  child: Text(
+                                    'បញ្ជីចំណាយ',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  key: const Key('enterSelectionModeButton'),
+                                  tooltip: 'ជ្រើសរើសច្រើន',
+                                  onPressed: _filteredExpenses.isEmpty
+                                      ? null
+                                      : () => setState(
+                                          () => _isSelecting = true,
+                                        ),
+                                  icon: const Icon(
+                                    Icons.checklist_rounded,
+                                    color: ink,
+                                    size: 22,
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'ស្វែងរកចំណាយ',
+                                  onPressed: () => setState(() {
+                                    _search = !_search;
+                                    if (!_search) {
+                                      _query = '';
+                                      _searchController.clear();
+                                    }
+                                  }),
+                                  icon: Icon(
+                                    _search
+                                        ? Icons.search_off
+                                        : Icons.search_rounded,
+                                    color: ink,
+                                    size: 23,
+                                  ),
+                                ),
+                                PopupMenuButton<String>(
+                                  tooltip: 'ច្រោះតាមមុខចំណាយ',
+                                  icon: Icon(
+                                    Icons.tune_rounded,
+                                    color: _category == null ? muted : green,
+                                    size: 22,
+                                  ),
+                                  onSelected: (value) => setState(
+                                    () => _category = value == 'all'
+                                        ? null
+                                        : _categories.firstWhere(
+                                            (c) => c.name == value,
+                                            orElse: () =>
+                                                ExpenseCategory.fromName(
+                                                  value,
+                                                  _categories,
+                                                ),
+                                          ),
+                                  ),
+                                  itemBuilder: (_) => [
+                                    const PopupMenuItem(
+                                      value: 'all',
+                                      child: Text('មុខចំណាយទាំងអស់'),
+                                    ),
+                                    ..._categories.map(
+                                      (c) => PopupMenuItem(
+                                        value: c.name,
+                                        child: Text(c.label),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           if (_search)
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -260,7 +430,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     Icons.space_dashboard_outlined,
                     'ទិដ្ឋភាពទូទៅ',
                     !_reports,
-                    () => setState(() => _reports = false),
+                    () => setState(() {
+                      _reports = false;
+                      _isSelecting = false;
+                      _selectedIds.clear();
+                    }),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -284,7 +458,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     Icons.donut_small_outlined,
                     'របាយការណ៍',
                     _reports,
-                    () => setState(() => _reports = true),
+                    () => setState(() {
+                      _reports = true;
+                      _isSelecting = false;
+                      _selectedIds.clear();
+                    }),
                   ),
                 ],
               ),
@@ -293,7 +471,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       ),
     ),
-  );
+  ),
+);
 
   Widget _header() => Row(
     children: [
@@ -305,6 +484,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         semanticLabel: 'កត់លុយ',
       ),
       const Spacer(),
+      IconButton(
+        key: const Key('pdfExportHeaderButton'),
+        tooltip: 'ទាញយករបាយការណ៍ PDF',
+        onPressed: () => PdfExportSheet.show(
+          context,
+          repository: widget.repository,
+        ),
+        icon: Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEDF1E3),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(
+            Icons.picture_as_pdf_outlined,
+            color: green,
+            size: 20,
+          ),
+        ),
+      ),
+      const SizedBox(width: 6),
       IconButton(
         tooltip: 'បម្រុងទុកទិន្នន័យ (Google Drive)',
         onPressed: () => DriveBackupSheet.show(
@@ -344,7 +544,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   borderRadius: BorderRadius.circular(24),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(24),
-                    onTap: () => setState(() => _period = p),
+                    onTap: () => setState(() {
+                      _period = p;
+                      _isSelecting = false;
+                      _selectedIds.clear();
+                    }),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Text(
@@ -435,35 +639,195 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const SizedBox(height: 12),
             const Divider(height: 1),
             const SizedBox(height: 14),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              children: categories
-                  .map(
-                    (c) => Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: c.color,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          c.label,
-                          style: const TextStyle(fontSize: 10, color: muted),
-                        ),
-                      ],
-                    ),
-                  )
-                  .toList(),
-            ),
+            _buildCategoryLegend(categories),
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildCategoryLegend(List<ExpenseCategory> categories) {
+    Widget legendItem(ExpenseCategory c) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: c.color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          c.label,
+          style: const TextStyle(fontSize: 10, color: muted),
+        ),
+      ],
+    );
+
+    if (_expandedCategoryLegend) {
+      return Wrap(
+        spacing: 16,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          ...categories.map(legendItem),
+          InkWell(
+            key: const Key('collapseCategoriesButton'),
+            borderRadius: BorderRadius.circular(6),
+            onTap: () => setState(() => _expandedCategoryLegend = false),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'បង្រួម',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: green,
+                    ),
+                  ),
+                  SizedBox(width: 2),
+                  Icon(
+                    Icons.expand_less_rounded,
+                    size: 13,
+                    color: green,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalWidth = constraints.maxWidth;
+        const spacing = 16.0;
+
+        double measureWidth(String text) {
+          final tp = TextPainter(
+            text: TextSpan(
+              text: text,
+              style: const TextStyle(fontSize: 10),
+            ),
+            textDirection: TextDirection.ltr,
+            maxLines: 1,
+          )..layout();
+          return 11.0 + tp.width;
+        }
+
+        double measureTextOnly(String text) {
+          final tp = TextPainter(
+            text: TextSpan(
+              text: text,
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+            ),
+            textDirection: TextDirection.ltr,
+            maxLines: 1,
+          )..layout();
+          return tp.width + 4.0;
+        }
+
+        final row1 = <ExpenseCategory>[];
+        final row2 = <ExpenseCategory>[];
+        int i = 0;
+        double r1Width = 0;
+
+        while (i < categories.length) {
+          final w = measureWidth(categories[i].label);
+          final needed = row1.isEmpty ? w : (w + spacing);
+          if (r1Width + needed <= totalWidth - 4) {
+            row1.add(categories[i]);
+            r1Width += needed;
+            i++;
+          } else {
+            break;
+          }
+        }
+
+        double remWidth = 0;
+        bool allRemainingFit = true;
+        for (int j = i; j < categories.length; j++) {
+          final w = measureWidth(categories[j].label);
+          final needed = (j == i) ? w : (w + spacing);
+          if (remWidth + needed <= totalWidth - 4) {
+            remWidth += needed;
+          } else {
+            allRemainingFit = false;
+            break;
+          }
+        }
+
+        if (allRemainingFit) {
+          while (i < categories.length) {
+            row2.add(categories[i]);
+            i++;
+          }
+        } else {
+          final moreReserve = measureTextOnly('+99 ទៀត') + spacing;
+          double r2Width = 0;
+          while (i < categories.length) {
+            final w = measureWidth(categories[i].label);
+            final needed = row2.isEmpty ? w : (w + spacing);
+            if (r2Width + needed + moreReserve <= totalWidth - 4) {
+              row2.add(categories[i]);
+              r2Width += needed;
+              i++;
+            } else {
+              break;
+            }
+          }
+        }
+
+        final remainingCount = categories.length - (row1.length + row2.length);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Wrap(
+              spacing: spacing,
+              children: row1.map(legendItem).toList(),
+            ),
+            if (row2.isNotEmpty || remainingCount > 0) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: spacing,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  ...row2.map(legendItem),
+                  if (remainingCount > 0)
+                    InkWell(
+                      key: const Key('expandCategoriesButton'),
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: () =>
+                          setState(() => _expandedCategoryLegend = true),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 2,
+                          vertical: 1,
+                        ),
+                        child: Text(
+                          '+$remainingCount ទៀត',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: green,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -508,15 +872,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   );
 
   Widget _transactionList() {
-    final items = _inPeriod
-        .where(
-          (e) =>
-              (_category == null || e.category == _category) &&
-              (_query.isEmpty ||
-                  e.title.toLowerCase().contains(_query) ||
-                  e.note.toLowerCase().contains(_query)),
-        )
-        .toList();
+    final items = _filteredExpenses;
     if (items.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
@@ -556,70 +912,115 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         itemCount: items.length,
         itemBuilder: (context, index) {
           final e = items[index];
+          final isSelected = e.id != null && _selectedIds.contains(e.id);
           return Column(
             children: [
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  key: Key('expense_item_${e.id}'),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFFF0F4E8)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => DetailScreen(
-                          expense: e,
-                          repository: widget.repository,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    key: Key('expense_item_${e.id}'),
+                    borderRadius: BorderRadius.circular(12),
+                    onLongPress: () {
+                      if (e.id != null) {
+                        setState(() {
+                          _isSelecting = true;
+                          _selectedIds.add(e.id!);
+                        });
+                      }
+                    },
+                    onTap: () async {
+                      if (_isSelecting) {
+                        if (e.id != null) {
+                          setState(() {
+                            if (_selectedIds.contains(e.id)) {
+                              _selectedIds.remove(e.id);
+                            } else {
+                              _selectedIds.add(e.id!);
+                            }
+                          });
+                        }
+                        return;
+                      }
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => DetailScreen(
+                            expense: e,
+                            repository: widget.repository,
+                          ),
                         ),
+                      );
+                      if (mounted) _load();
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 14,
+                        horizontal: 8,
                       ),
-                    );
-                    if (mounted) _load();
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                e.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                  color: ink,
+                      child: Row(
+                        children: [
+                          if (_isSelecting) ...[
+                            Icon(
+                              isSelected
+                                  ? Icons.check_circle_rounded
+                                  : Icons.radio_button_unchecked_rounded,
+                              color: isSelected ? green : muted,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  e.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                    color: ink,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                formatExpenseDateTime(e.date, clock.now()),
-                                style: const TextStyle(
-                                  color: muted,
-                                  fontSize: 12,
+                                const SizedBox(height: 4),
+                                Text(
+                                  formatExpenseDateTime(e.date, clock.now()),
+                                  style: const TextStyle(
+                                    color: muted,
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          riel(e.amount),
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: ink,
+                          const SizedBox(width: 12),
+                          Text(
+                            riel(e.amount),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: ink,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.chevron_right_rounded,
-                          color: Color(0xFFB2B8AC),
-                          size: 18,
-                        ),
-                      ],
+                          if (!_isSelecting) ...[
+                            const SizedBox(width: 6),
+                            const Icon(
+                              Icons.chevron_right_rounded,
+                              color: Color(0xFFB2B8AC),
+                              size: 18,
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -648,9 +1049,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final sorted = totals.entries.where((e) => e.value > 0).toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     return [
-      const Text(
-        'ចំណាយតាមប្រភេទ',
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'ចំណាយតាមមុខចំណាយ',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          FilledButton.tonalIcon(
+            key: const ValueKey('pdfExportReportButton'),
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            ),
+            icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
+            label: const Text('ទាញយក PDF', style: TextStyle(fontSize: 12)),
+            onPressed: () => PdfExportSheet.show(
+              context,
+              repository: widget.repository,
+            ),
+          ),
+        ],
       ),
       const SizedBox(height: 8),
       if (total == 0)
@@ -670,8 +1089,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             children: [
               Row(
                 children: [
-                  Icon(entry.key.icon, size: 20, color: entry.key.color),
-                  const SizedBox(width: 10),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: entry.key.color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       entry.key.label,

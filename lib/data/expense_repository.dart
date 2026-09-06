@@ -64,9 +64,36 @@ class ExpenseRepository {
         await txn.delete('categories', where: "id = 'other'");
       });
     } catch (_) {}
+    await _deduplicateCategories(db);
     final repo = ExpenseRepository(db);
     unawaited(DriveBackup.dataChanged(db.path));
     return repo;
+  }
+
+  static Future<void> _deduplicateCategories(DatabaseExecutor db) async {
+    try {
+      final rows = await db.query(
+        'categories',
+        orderBy: 'is_custom ASC, sort_order ASC',
+      );
+      final seen = <String, String>{}; // normalized label -> primary id
+      for (final row in rows) {
+        final id = row['id'] as String;
+        final label = (row['label'] as String).trim().toLowerCase();
+        if (seen.containsKey(label)) {
+          final primaryId = seen[label]!;
+          await db.update(
+            'expenses',
+            {'category': primaryId},
+            where: 'category = ?',
+            whereArgs: [id],
+          );
+          await db.delete('categories', where: 'id = ?', whereArgs: [id]);
+        } else {
+          seen[label] = id;
+        }
+      }
+    } catch (_) {}
   }
 
   static Future<void> _createCategoriesTable(DatabaseExecutor db) async {
@@ -106,6 +133,19 @@ class ExpenseRepository {
       await _createCategoriesTable(database);
       return ExpenseCategory.values;
     }
+    final seenLabels = <String>{};
+    var hasDuplicates = false;
+    for (final r in rows) {
+      final label = (r['label'] as String).trim().toLowerCase();
+      if (!seenLabels.add(label)) {
+        hasDuplicates = true;
+        break;
+      }
+    }
+    if (hasDuplicates) {
+      await _deduplicateCategories(database);
+      return getCategories();
+    }
     return rows.map((r) {
       final id = r['id'] as String;
       final label = r['label'] as String;
@@ -133,8 +173,14 @@ class ExpenseRepository {
 
   Future<ExpenseCategory> addCategory(String label) async {
     final clean = label.trim();
-    if (clean.isEmpty) throw ArgumentError('Category label cannot be empty');
+    if (clean.isEmpty) throw ArgumentError('ឈ្មោះមុខចំណាយមិនអាចទទេបានទេ');
     final current = await getCategories();
+    final isDuplicate = current.any(
+      (c) => c.label.trim().toLowerCase() == clean.toLowerCase(),
+    );
+    if (isDuplicate) {
+      throw ArgumentError('មុខចំណាយនេះមានរួចហើយ');
+    }
     final customCount = current.where((c) => c.isCustom).length;
     final color =
         ExpenseCategory.autoColors[(customCount + 5) %
@@ -227,6 +273,18 @@ class ExpenseRepository {
 
   Future<void> delete(int id) async {
     await database.delete('expenses', where: 'id = ?', whereArgs: [id]);
+    unawaited(DriveBackup.dataChanged(database.path));
+  }
+
+  Future<void> deleteMultiple(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await database.transaction((txn) async {
+      final batch = txn.batch();
+      for (final id in ids) {
+        batch.delete('expenses', where: 'id = ?', whereArgs: [id]);
+      }
+      await batch.commit(noResult: true);
+    });
     unawaited(DriveBackup.dataChanged(database.path));
   }
 

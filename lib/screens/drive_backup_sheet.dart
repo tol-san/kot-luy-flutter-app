@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 import '../backup/drive_backup.dart';
@@ -19,16 +20,15 @@ class DriveBackupSheet extends StatefulWidget {
     BuildContext context,
     ExpenseRepository repository, {
     VoidCallback? onDataRestored,
-  }) =>
-      showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => DriveBackupSheet(
-          repository: repository,
-          onDataRestored: onDataRestored,
-        ),
-      );
+  }) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => DriveBackupSheet(
+      repository: repository,
+      onDataRestored: onDataRestored,
+    ),
+  );
 
   @override
   State<DriveBackupSheet> createState() => _DriveBackupSheetState();
@@ -355,14 +355,13 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
                   Container(
                     width: 44,
                     height: 44,
+                    padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEDF1E3),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(
-                      Icons.cloud_sync_rounded,
-                      color: green,
-                      size: 26,
+                    child: SvgPicture.asset(
+                      'assets/illustrations/google_drive.svg',
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -381,10 +380,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
                         SizedBox(height: 2),
                         Text(
                           'រក្សាទុកចំណាយរបស់អ្នកដោយសុវត្ថិភាព',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: muted,
-                          ),
+                          style: TextStyle(fontSize: 12, color: muted),
                         ),
                       ],
                     ),
@@ -411,7 +407,9 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
                             decoration: BoxDecoration(
                               color: const Color(0xFFFBF0EF),
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: const Color(0xFFF3D0CB)),
+                              border: Border.all(
+                                color: const Color(0xFFF3D0CB),
+                              ),
                             ),
                             child: Row(
                               children: [
@@ -471,11 +469,15 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.lock_outline_rounded, color: green, size: 20),
-                SizedBox(width: 8),
-                Text(
+                SvgPicture.asset(
+                  'assets/illustrations/google_drive.svg',
+                  width: 22,
+                  height: 20,
+                ),
+                const SizedBox(width: 10),
+                const Text(
                   'គណនីផ្ទាល់ខ្លួនរបស់អ្នក',
                   style: TextStyle(
                     fontSize: 14,
@@ -487,7 +489,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'ទិន្នន័យបម្រុងទុកនឹងត្រូវរក្សាទុកក្នុង Google Drive ផ្ទាល់ខ្លួនរបស់អ្នក (ក្នុងថត Kot Luy Backups)។ គ្មាននរណាម្នាក់ផ្សេងទៀតអាចមើលឃើញបានឡើយ។',
+              'ទិន្នន័យបម្រុងទុកនឹងត្រូវរក្សាទុកក្នុង Google Drive ផ្ទាល់ខ្លួនរបស់អ្នក ',
               style: TextStyle(fontSize: 13, color: muted, height: 1.5),
             ),
             const SizedBox(height: 16),
@@ -495,7 +497,11 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: _actionInProgress ? null : _connect,
-                icon: const Icon(Icons.account_circle_outlined, size: 20),
+                icon: SvgPicture.asset(
+                  'assets/illustrations/google_drive.svg',
+                  width: 20,
+                  height: 18,
+                ),
                 label: Text(
                   _actionInProgress ? 'កំពុងភ្ជាប់...' : 'ភ្ជាប់ Google Drive',
                 ),
@@ -515,10 +521,17 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: const Color(0xFFEDF1E3),
-            radius: 20,
-            child: const Icon(Icons.check_circle_rounded, color: green, size: 22),
+          Container(
+            width: 40,
+            height: 40,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEDF1E3),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: SvgPicture.asset(
+              'assets/illustrations/google_drive.svg',
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -572,122 +585,122 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
   }
 
   Widget _settingsCard(bool allowSim) => Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: line),
-        ),
-        child: Column(
-          children: [
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 4,
-              ),
-              title: const Text(
-                'បម្រុងទុកស្វ័យប្រវត្តិ (Silent)',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: ink,
-                ),
-              ),
-              subtitle: const Text(
-                'បម្រុងទុកដោយស្ងាត់ៗពេលទិន្នន័យប្រែប្រួល និងរៀងរាល់ 6 ម៉ោង',
-                style: TextStyle(fontSize: 12, color: muted),
-              ),
-              value: _status.automatic,
-              activeThumbColor: green,
-              onChanged: _actionInProgress ? null : _toggleAutomatic,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: line),
+    ),
+    child: Column(
+      children: [
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          title: const Text(
+            'បម្រុងទុកស្វ័យប្រវត្តិ (Silent)',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: ink,
             ),
-            const Divider(height: 1, indent: 16, endIndent: 16),
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 4,
-              ),
-              title: const Text(
-                'ប្រើ Wi-Fi ឬទិន្នន័យចល័ត (SIM)',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: ink,
-                ),
-              ),
-              subtitle: Text(
-                allowSim
-                    ? 'អនុញ្ញាតឱ្យបម្រុងទុកទាំងតាម SIM ទូរសព្ទ និង Wi-Fi'
-                    : 'បម្រុងទុកតែតាមប្រព័ន្ធ Wi-Fi ប៉ុណ្ណោះ',
-                style: const TextStyle(fontSize: 12, color: muted),
-              ),
-              value: allowSim,
-              activeThumbColor: green,
-              onChanged: _actionInProgress ? null : _toggleSimData,
-            ),
-          ],
+          ),
+          subtitle: const Text(
+            'បម្រុងទុកដោយស្ងាត់ៗពេលទិន្នន័យប្រែប្រួល និងរៀងរាល់ 6 ម៉ោង',
+            style: TextStyle(fontSize: 12, color: muted),
+          ),
+          value: _status.automatic,
+          activeThumbColor: green,
+          onChanged: _actionInProgress ? null : _toggleAutomatic,
         ),
-      );
+        const Divider(height: 1, indent: 16, endIndent: 16),
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          title: const Text(
+            'ប្រើ Wi-Fi ឬទិន្នន័យចល័ត (SIM)',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: ink,
+            ),
+          ),
+          subtitle: Text(
+            allowSim
+                ? 'អនុញ្ញាតឱ្យបម្រុងទុកទាំងតាម SIM ទូរសព្ទ និង Wi-Fi'
+                : 'បម្រុងទុកតែតាមប្រព័ន្ធ Wi-Fi ប៉ុណ្ណោះ',
+            style: const TextStyle(fontSize: 12, color: muted),
+          ),
+          value: allowSim,
+          activeThumbColor: green,
+          onChanged: _actionInProgress ? null : _toggleSimData,
+        ),
+      ],
+    ),
+  );
 
   Widget _manualBackupCard() => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: line),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: line),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'បម្រុងទុកដោយផ្ទាល់',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: ink,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'ចុងក្រោយ: ${_formatDate(_status.lastSuccess)}',
-                        style: const TextStyle(fontSize: 12, color: muted),
-                      ),
-                    ],
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: _actionInProgress ? null : _manualBackup,
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'បម្រុងទុកដោយផ្ទាល់',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: ink,
                     ),
-                    minimumSize: const Size(0, 42),
                   ),
-                  icon: _actionInProgress
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.backup_rounded, size: 18),
-                  label: Text(
-                    _actionInProgress ? 'កំពុងដំណើរការ...' : 'បម្រុងទុកឥឡូវនេះ',
+                  const SizedBox(height: 3),
+                  Text(
+                    'ចុងក្រោយ: ${_formatDate(_status.lastSuccess)}',
+                    style: const TextStyle(fontSize: 12, color: muted),
                   ),
+                ],
+              ),
+            ),
+            FilledButton.icon(
+              onPressed: _actionInProgress ? null : _manualBackup,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
                 ),
-              ],
+                minimumSize: const Size(0, 42),
+              ),
+              icon: _actionInProgress
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.backup_rounded, size: 18),
+              label: Text(
+                _actionInProgress ? 'កំពុងដំណើរការ...' : 'បម្រុងទុកឥឡូវនេះ',
+              ),
             ),
           ],
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _snapshotsSection() {
     return Column(
@@ -758,88 +771,84 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
   }
 
   Widget _snapshotTile(DriveBackupItem item) => Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: line),
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: line),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEDF1E3),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(Icons.description_outlined, color: green, size: 20),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEDF1E3),
-                borderRadius: BorderRadius.circular(10),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _formatDate(item.createdTime),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: ink,
+                ),
               ),
-              child: const Icon(
-                Icons.description_outlined,
-                color: green,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 2),
+              Row(
                 children: [
                   Text(
-                    _formatDate(item.createdTime),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: ink,
-                    ),
+                    _formatBytes(item.size),
+                    style: const TextStyle(fontSize: 12, color: muted),
                   ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Text(
-                        _formatBytes(item.size),
-                        style: const TextStyle(fontSize: 12, color: muted),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F3EA),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'Read-only',
-                          style: TextStyle(fontSize: 10, color: muted),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F3EA),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'Read-only',
+                      style: TextStyle(fontSize: 10, color: muted),
+                    ),
                   ),
                 ],
               ),
-            ),
-            OutlinedButton(
-              onPressed: _actionInProgress ? null : () => _restore(item),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: green),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                minimumSize: const Size(0, 34),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text(
-                'ស្ដារ',
-                style: TextStyle(
-                  color: green,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      );
+        OutlinedButton(
+          onPressed: _actionInProgress ? null : () => _restore(item),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: green),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            minimumSize: const Size(0, 34),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: const Text(
+            'ស្ដារ',
+            style: TextStyle(
+              color: green,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -136,7 +136,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   children: [
                     const Expanded(
                       child: Text(
-                        'ជ្រើសរើសប្រភេទចំណាយ',
+                        'ជ្រើសរើសមុខចំណាយ',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -215,7 +215,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   ),
                   icon: const Icon(Icons.swap_vert_rounded, size: 18, color: green),
                   label: const Text(
-                    'រៀបចំ ឬ បន្ថែមប្រភេទថ្មី',
+                    'រៀបចំ ឬ បន្ថែមមុខចំណាយថ្មី',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -421,9 +421,12 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    ...[5000, 10000, 20000, 50000, 100000].map(
+                    ...[500, 1000, 2000, 3000, 5000, 10000].map(
                       (v) => ActionChip(
                         key: Key('quick_amount_$v'),
+                        materialTapTargetSize:
+                            MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
                         label: Text(
                           '+${riel(v)}',
                           style: const TextStyle(fontSize: 11),
@@ -447,6 +450,8 @@ class _ExpenseFormState extends State<ExpenseForm> {
                     ),
                     ActionChip(
                       key: const Key('clearAmount'),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
                       avatar: const Icon(
                         Icons.backspace_outlined,
                         size: 13,
@@ -468,7 +473,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                 Row(
                   children: [
                     const Text(
-                      'ប្រភេទចំណាយ',
+                      'មុខចំណាយ',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const Spacer(),

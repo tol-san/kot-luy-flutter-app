@@ -191,11 +191,85 @@ void main() {
         expect(catsAfterCoffeeDelete.length, 4);
         expect(catsAfterCoffeeDelete.any((c) => c.name == 'coffee'), isFalse);
 
-        // 6. Blank category name rejected
+        // 7. Blank category name rejected
         await expectLater(
           repo.addCategory('   '),
           throwsArgumentError,
         );
+
+        // 8. Duplicate category rejected (case and trim insensitive)
+        await expectLater(
+          repo.addCategory('បាយថ្ងៃត្រង់'),
+          throwsArgumentError,
+        );
+        await expectLater(
+          repo.addCategory('  បាយថ្ងៃត្រង់  '),
+          throwsArgumentError,
+        );
+
+        // 9. Automatic deduplication of existing duplicate categories
+        await repo.database.insert('categories', {
+          'id': 'custom_duplicate_test',
+          'label': 'បាយថ្ងៃត្រង់',
+          'color_value': 0xFF123456,
+          'sort_order': 99,
+          'is_custom': 1,
+        });
+        final catsWithDedup = await repo.getCategories();
+        final lunchMatches = catsWithDedup.where((c) => c.label == 'បាយថ្ងៃត្រង់');
+        expect(lunchMatches.length, 1);
+      } finally {
+        await repo.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+
+  test(
+    'deleteMultiple deletes multiple records in SQLite transaction',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'kot_luy_test_delete_multi_',
+      );
+      final path = '${directory.path}/expenses.db';
+      final repo = await ExpenseRepository.open(
+        factory: databaseFactoryFfi,
+        path: path,
+      );
+      try {
+        await repo.save(
+          Expense(
+            title: 'A',
+            amount: 1000,
+            category: ExpenseCategory.breakfast,
+            date: DateTime(2026, 9, 6),
+          ),
+        );
+        await repo.save(
+          Expense(
+            title: 'B',
+            amount: 2000,
+            category: ExpenseCategory.lunch,
+            date: DateTime(2026, 9, 6),
+          ),
+        );
+        await repo.save(
+          Expense(
+            title: 'C',
+            amount: 3000,
+            category: ExpenseCategory.dinner,
+            date: DateTime(2026, 9, 6),
+          ),
+        );
+
+        final all = await repo.all();
+        expect(all.length, 3);
+        final idsToDelete = [all[0].id!, all[1].id!];
+        await repo.deleteMultiple(idsToDelete);
+
+        final remaining = await repo.all();
+        expect(remaining.length, 1);
+        expect(remaining.single.id, all[2].id);
       } finally {
         await repo.close();
         await directory.delete(recursive: true);

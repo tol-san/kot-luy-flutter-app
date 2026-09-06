@@ -37,7 +37,7 @@ class ExpenseChart extends StatelessWidget {
                   ),
                 ),
                 const Text(
-                  'ប្រភេទ',
+                  'មុខ',
                   style: TextStyle(fontSize: 10, color: muted),
                 ),
               ],

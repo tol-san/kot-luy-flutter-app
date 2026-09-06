@@ -13,23 +13,29 @@ class CategoryListItem extends StatelessWidget {
     required this.category,
     required this.index,
     required this.onDelete,
+    this.isHighlighted = false,
   });
 
   final ExpenseCategory category;
   final int index;
   final VoidCallback onDelete;
+  final bool isHighlighted;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
       key: ValueKey(category.name),
       height: 48,
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isHighlighted ? const Color(0xFFFDE8E8) : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: line),
+        border: Border.all(
+          color: isHighlighted ? const Color(0xFFC26D6D) : line,
+          width: isHighlighted ? 1.5 : 1,
+        ),
       ),
       child: Row(
         children: [
@@ -64,7 +70,7 @@ class CategoryListItem extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'លុបប្រភេទនេះ',
+            tooltip: 'លុបមុខចំណាយនេះ',
             icon: const Icon(
               Icons.delete_outline_rounded,
               color: Color(0xFFC26D6D),

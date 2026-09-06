@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/expense_repository.dart';
@@ -57,6 +59,8 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
   List<ExpenseCategory> _categories = [];
   bool _loading = true;
   bool _adding = false;
+  String? _highlightedCategoryId;
+  Timer? _highlightTimer;
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -64,6 +68,30 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
   void initState() {
     super.initState();
     _loadCategories();
+  }
+
+  @override
+  void dispose() {
+    _highlightTimer?.cancel();
+    super.dispose();
+  }
+
+  void _highlightCategory(String id) {
+    _highlightTimer?.cancel();
+    setState(() => _highlightedCategoryId = id);
+    _highlightTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _highlightedCategoryId = null);
+    });
+  }
+
+  void _highlightCategoryByName(String name) {
+    final clean = name.trim().toLowerCase();
+    for (final c in _categories) {
+      if (c.label.trim().toLowerCase() == clean) {
+        _highlightCategory(c.name);
+        break;
+      }
+    }
   }
 
   // ── Data helpers ──────────────────────────────────────────────────────────
@@ -80,10 +108,26 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
   }
 
   Future<void> _addCategory(String name) async {
+    final cleanName = name.trim();
+    if (cleanName.isEmpty) return;
     if (_adding) return;
+
+    if (_categories.any(
+      (c) => c.label.trim().toLowerCase() == cleanName.toLowerCase(),
+    )) {
+      _highlightCategoryByName(cleanName);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('មុខចំណាយ «$cleanName» មានរួចហើយ មិនអាចបន្ថែមស្ទួនបានទេ'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() => _adding = true);
     try {
-      final newCat = await widget.repository.addCategory(name);
+      final newCat = await widget.repository.addCategory(cleanName);
       _categories.add(newCat);
       widget.onCategoriesChanged?.call(_categories);
       if (mounted) {
@@ -95,8 +139,19 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
           ),
         );
       }
-    } catch (_) {
-      if (mounted) setState(() => _adding = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _adding = false);
+        final message = e is ArgumentError && e.message != null
+            ? e.message.toString()
+            : 'មិនអាចបន្ថែមមុខចំណាយនេះបានទេ';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -104,7 +159,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
     if (_categories.length <= 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('មិនអាចលុបបានទេ ត្រូវមានប្រភេទយ៉ាងហោចណាស់មួយ'),
+          content: Text('មិនអាចលុបបានទេ ត្រូវមានមុខចំណាយយ៉ាងហោចណាស់មួយ'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -113,9 +168,9 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('លុបប្រភេទនេះ?'),
+        title: const Text('លុបមុខចំណាយនេះ?'),
         content: Text(
-          '«${category.label}» នឹងត្រូវបានលុបចេញពីបញ្ជីប្រភេទចំណាយ។',
+          '«${category.label}» នឹងត្រូវបានលុបចេញពីបញ្ជីមុខចំណាយ។',
         ),
         actions: [
           TextButton(
@@ -171,7 +226,12 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
             _buildDragHandle(),
             _buildHeader(),
             const Divider(height: 1),
-            CategoryInputRow(onAdd: _addCategory, isAdding: _adding),
+            CategoryInputRow(
+              onAdd: _addCategory,
+              existingCategories: _categories,
+              onSelectExisting: (cat) => _highlightCategory(cat.name),
+              isAdding: _adding,
+            ),
             _loading ? _buildLoader() : _buildList(),
           ],
         ),
@@ -202,7 +262,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'រៀបចំប្រភេទចំណាយ',
+                'រៀបចំមុខចំណាយ',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -250,6 +310,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
         key: ValueKey(_categories[index].name),
         category: _categories[index],
         index: index,
+        isHighlighted: _categories[index].name == _highlightedCategoryId,
         onDelete: () => _deleteCategory(_categories[index]),
       ),
     ),

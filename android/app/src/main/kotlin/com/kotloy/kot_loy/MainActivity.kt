@@ -10,14 +10,22 @@ import android.os.Bundle
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
+import android.content.ContentValues
+import android.net.Uri
+import android.os.Environment
+import android.provider.MediaStore
+import android.provider.OpenableColumns
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
+import java.io.IOException
 import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     companion object {
         private const val CHANNEL = "kot_luy/drive_backup"
+        private const val PDF_CHANNEL = "kot_luy/pdf_storage"
         private const val RC_CHOOSE_ACCOUNT = 9001
         private const val RC_AUTHORIZE = 9002
     }
@@ -139,6 +147,45 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PDF_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "saveToDownloads" -> {
+                    val filename = call.argument<String>("filename")
+                    val bytes = call.argument<ByteArray>("bytes")
+                    if (filename == null || bytes == null) {
+                        result.error("invalid_arguments", "filename and bytes are required", null)
+                        return@setMethodCallHandler
+                    }
+                    executor.execute {
+                        try {
+                            val res = savePdfToDownloads(filename, bytes)
+                            runOnUiThread {
+                                result.success(res)
+                            }
+                        } catch (e: Exception) {
+                            runOnUiThread {
+                                result.error("save_failed", e.message, null)
+                            }
+                        }
+                    }
+                }
+                "openPdf" -> {
+                    val uriString = call.argument<String>("uri")
+                    if (uriString == null) {
+                        result.error("invalid_arguments", "uri is required", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val opened = openPdf(uriString)
+                        result.success(opened)
+                    } catch (e: Exception) {
+                        result.error("open_failed", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
     private fun requestDriveAuthorization(accountName: String) {
@@ -218,6 +265,85 @@ class MainActivity : FlutterActivity() {
             } else {
                 pending.error("no_account", "Account information missing", null)
             }
+        }
+    }
+
+    private fun savePdfToDownloads(filename: String, bytes: ByteArray): Map<String, String> {
+        val resolver = applicationContext.contentResolver
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                ?: throw IOException("Failed to create download record in MediaStore")
+
+            try {
+                resolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(bytes)
+                    stream.flush()
+                } ?: throw IOException("Failed to open output stream for download")
+
+                contentValues.clear()
+                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                resolver.update(uri, contentValues, null, null)
+            } catch (e: Exception) {
+                resolver.delete(uri, null, null)
+                throw e
+            }
+
+            var finalName = filename
+            resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    finalName = cursor.getString(0) ?: filename
+                }
+            }
+
+            return mapOf(
+                "uri" to uri.toString(),
+                "name" to finalName,
+                "path" to "Downloads/$finalName"
+            )
+        } else {
+            val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (!dir.exists()) {
+                dir.mkdirs()
+            }
+            val file = File(dir, filename)
+            file.writeBytes(bytes)
+
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+                put(MediaStore.MediaColumns.DATA, file.absolutePath)
+            }
+            val uri = resolver.insert(MediaStore.Files.getContentUri("external"), contentValues)
+                ?: Uri.fromFile(file)
+
+            return mapOf(
+                "uri" to uri.toString(),
+                "name" to filename,
+                "path" to file.absolutePath
+            )
+        }
+    }
+
+    private fun openPdf(uriString: String): Boolean {
+        val uri = Uri.parse(uriString)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/pdf")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        return try {
+            val chooser = Intent.createChooser(intent, "បើកឯកសារ PDF")
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(chooser)
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 

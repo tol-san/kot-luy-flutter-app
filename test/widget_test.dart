@@ -35,12 +35,22 @@ class MemoryRepository implements ExpenseRepository {
   Future<void> delete(int id) async => items.removeWhere((e) => e.id == id);
 
   @override
+  Future<void> deleteMultiple(List<int> ids) async =>
+      items.removeWhere((e) => ids.contains(e.id));
+
+  @override
   Future<List<ExpenseCategory>> getCategories() async =>
       List.unmodifiable(categories);
 
   @override
   Future<ExpenseCategory> addCategory(String label) async {
     final clean = label.trim();
+    if (clean.isEmpty) throw ArgumentError('ឈ្មោះមុខចំណាយមិនអាចទទេបានទេ');
+    if (categories.any(
+      (c) => c.label.trim().toLowerCase() == clean.toLowerCase(),
+    )) {
+      throw ArgumentError('មុខចំណាយនេះមានរួចហើយ');
+    }
     final customCount = categories.where((c) => c.isCustom).length;
     final color = ExpenseCategory.autoColors[(customCount + 6) %
         ExpenseCategory.autoColors.length];
@@ -232,14 +242,14 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('addExpense')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('quick_amount_20000')));
+      await tester.tap(find.byKey(const Key('quick_amount_10000')));
       await tester.pumpAndSettle();
       expect(
         tester
             .widget<TextFormField>(find.byKey(const Key('amountInput')))
             .controller!
             .text,
-        '20,000',
+        '10,000',
       );
       await expectLater(
         find.byType(MaterialApp),
@@ -322,7 +332,7 @@ void main() {
     await tester.tap(find.byKey(const Key('category_more')));
     await tester.pumpAndSettle();
 
-    expect(find.text('ជ្រើសរើសប្រភេទចំណាយ'), findsOneWidget);
+    expect(find.text('ជ្រើសរើសមុខចំណាយ'), findsOneWidget);
     expect(find.byKey(const Key('picker_category_coffee')), findsOneWidget);
 
     // Select coffee from picker
@@ -385,7 +395,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify the management sheet is open
-      expect(find.text('រៀបចំប្រភេទចំណាយ'), findsOneWidget);
+      expect(find.text('រៀបចំមុខចំណាយ'), findsOneWidget);
       expect(find.byKey(const Key('addCategoryInput')), findsOneWidget);
       expect(find.byKey(const Key('addCategoryButton')), findsOneWidget);
 
@@ -394,16 +404,44 @@ void main() {
       expect(find.text('Icon'), findsNothing);
       expect(find.byType(DropdownButton), findsNothing);
 
+      // Verify typing shows suggestions based on already existing names
+      await tester.enterText(
+        find.byKey(const Key('addCategoryInput')),
+        'បាយ',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('មុខចំណាយដែលមានស្រាប់:'), findsOneWidget);
+      expect(find.byKey(const Key('categorySuggestion_breakfast')), findsOneWidget);
+      expect(find.byKey(const Key('categorySuggestion_lunch')), findsOneWidget);
+      expect(find.byKey(const Key('categorySuggestion_dinner')), findsOneWidget);
+
+      // Verify duplicate category cannot be added (e.g. 'កាហ្វេ')
+      await tester.enterText(
+        find.byKey(const Key('addCategoryInput')),
+        'កាហ្វេ',
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('categorySuggestion_coffee')), findsOneWidget);
+
+      // Verify duplicate category changes button label to 'មានរួចហើយ' and disables it
+      expect(find.text('មានរួចហើយ'), findsOneWidget);
+      final button = tester.widget<FilledButton>(
+        find.byKey(const Key('addCategoryButton')),
+      );
+      expect(button.onPressed, isNull);
+      expect(find.text('រៀបចំមុខចំណាយ'), findsOneWidget);
+
       // Add a custom category: user only inputs the name
       await tester.enterText(
         find.byKey(const Key('addCategoryInput')),
         'ថ្លៃសាលា',
       );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('addCategoryButton')));
       await tester.pumpAndSettle();
 
       // Verify the management sheet is automatically closed
-      expect(find.text('រៀបចំប្រភេទចំណាយ'), findsNothing);
+      expect(find.text('រៀបចំមុខចំណាយ'), findsNothing);
 
       // Verify the 6th button now automatically displays and selects 'ថ្លៃសាលា'
       expect(find.text('ថ្លៃសាលា'), findsOneWidget);
@@ -419,6 +457,103 @@ void main() {
       expect(repo.items.first.category.label, 'ថ្លៃសាលា');
       expect(repo.items.first.category.isCustom, isTrue);
       expect(repo.items.first.amount, 50000);
+    },
+  );
+
+  testWidgets(
+    'bulk delete multiple expenses with selection mode, toggle, select all and confirm dialog',
+    (tester) async {
+      final repo = MemoryRepository();
+      final now = DateTime(2026, 9, 6, 10, 0);
+      await repo.save(
+        Expense(
+          id: 1,
+          title: 'កាហ្វេ',
+          amount: 5000,
+          category: ExpenseCategory.coffee,
+          date: now,
+        ),
+      );
+      await repo.save(
+        Expense(
+          id: 2,
+          title: 'បាយព្រឹក',
+          amount: 10000,
+          category: ExpenseCategory.breakfast,
+          date: now,
+        ),
+      );
+      await repo.save(
+        Expense(
+          id: 3,
+          title: 'ចាក់សាំង',
+          amount: 20000,
+          category: ExpenseCategory.fuel,
+          date: now,
+        ),
+      );
+
+      await mount(tester, repo, size: const Size(390, 1200));
+
+      expect(find.byKey(const Key('expense_item_1')), findsOneWidget);
+      expect(find.byKey(const Key('expense_item_2')), findsOneWidget);
+      expect(find.byKey(const Key('expense_item_3')), findsOneWidget);
+
+      // 1. Long press on an expense to enter selection mode
+      await tester.longPress(find.byKey(const Key('expense_item_1')));
+      await tester.pumpAndSettle();
+
+      // Verify selection mode is active
+      expect(find.text('បានជ្រើសរើស 1'), findsOneWidget);
+      expect(
+        find.byKey(const Key('deleteSelectedExpensesButton')),
+        findsOneWidget,
+      );
+
+      // 2. Tap second item to select it as well
+      await tester.tap(find.byKey(const Key('expense_item_2')));
+      await tester.pumpAndSettle();
+      expect(find.text('បានជ្រើសរើស 2'), findsOneWidget);
+
+      // 3. Test Select All button
+      await tester.tap(find.byKey(const Key('selectAllButton')));
+      await tester.pumpAndSettle();
+      expect(find.text('បានជ្រើសរើស 3'), findsOneWidget);
+
+      // 4. Tap Select All again to deselect all
+      await tester.tap(find.byKey(const Key('selectAllButton')));
+      await tester.pumpAndSettle();
+      expect(find.text('ជ្រើសរើសចំណាយ'), findsOneWidget);
+
+      // 5. Select items 1 and 2
+      await tester.tap(find.byKey(const Key('expense_item_1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('expense_item_2')));
+      await tester.pumpAndSettle();
+      expect(find.text('បានជ្រើសរើស 2'), findsOneWidget);
+
+      // 6. Tap delete button to open confirmation dialog
+      await tester.tap(
+        find.byKey(const Key('deleteSelectedExpensesButton')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('លុបចំណាយដែលបានជ្រើសរើស?'), findsOneWidget);
+      expect(find.text('លុប (2)'), findsOneWidget);
+
+      // Confirm deletion
+      await tester.tap(find.byKey(const Key('confirmBulkDeleteButton')));
+      await tester.pumpAndSettle();
+
+      // Verify deleted items are removed and remaining item 3 persists
+      expect(repo.items.length, 1);
+      expect(repo.items.single.id, 3);
+      expect(find.byKey(const Key('expense_item_1')), findsNothing);
+      expect(find.byKey(const Key('expense_item_2')), findsNothing);
+      expect(find.byKey(const Key('expense_item_3')), findsOneWidget);
+
+      // Verify selection mode has exited
+      expect(find.text('បញ្ជីចំណាយ'), findsOneWidget);
     },
   );
 }
