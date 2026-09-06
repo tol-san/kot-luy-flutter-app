@@ -256,7 +256,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     child: FilledButton.icon(
                       key: const Key('addExpense'),
                       onPressed: _add,
-                      icon: const Icon(Icons.add_rounded, size: 23),
+                      icon: SvgPicture.asset(
+                        'assets/illustrations/wallet_arrow_up.svg',
+                        width: 20,
+                        height: 20,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
+                      ),
                       label: const Text('កត់ចំណាយ'),
                     ),
                   ),
