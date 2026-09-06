@@ -165,14 +165,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  harfbuzz_ffi:
+    dependency: transitive
+    description:
+      name: harfbuzz_ffi
+      sha256: "2307de2e7adfa84bf7621232929f20ce38fb22d13a33f6cbda8737894b52b712"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.0"
   hooks:
     dependency: transitive
     description:
       name: hooks
-      sha256: "9a62a50b50b769a737bc0a8ff381f333529df3ab746b2f6b02e83760231455ba"
+      sha256: eaac480a35ec0814146c2c48d96aaa829e0e44a7662c88ae84c9edf4bc35651f
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.2"
+    version: "2.2.0"
   http:
     dependency: transitive
     description:
@@ -265,18 +273,18 @@ packages:
     dependency: transitive
     description:
       name: meta
-      sha256: c82594181e3312f3d0695fc95aaaf7758d75b8d4ae2bbecf223b9fd5109a059d
+      sha256: "307249ce4ff29d58a18e97f6345f539382eb9c9c29ecda628900f31de0443dd9"
       url: "https://pub.dev"
     source: hosted
-    version: "1.18.3"
+    version: "1.19.0"
   native_toolchain_c:
     dependency: transitive
     description:
       name: native_toolchain_c
-      sha256: f9c168717100ae6d9fee9ffb0be379bf1f8b26b0f6bcbd4fdddcd931993a6a72
+      sha256: a1c26117c48cebe5677b0cf0e33a980a79a7c5577effc86f52e5a0d309cdcb60
       url: "https://pub.dev"
     source: hosted
-    version: "0.19.2"
+    version: "0.19.3"
   path:
     dependency: "direct main"
     description:
@@ -301,6 +309,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.13.0"
+  pdf_text_shaper:
+    dependency: "direct main"
+    description:
+      name: pdf_text_shaper
+      sha256: "5696ddbba09058221564205120d5a1fc85301cc7e185476b5b3da55007483d98"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   pdf_widget_wrapper:
     dependency: transitive
     description:
@@ -385,10 +401,10 @@ packages:
     dependency: transitive
     description:
       name: record_use
-      sha256: "2551bd8eecfe95d14ae75f6021ad0248be5c27f138c2ec12fcb52b500b3ba1ed"
+      sha256: "1cb8564af8d43b464294411db9217f5ec04891c6f22ee2c32d73ae05e88a6bd2"
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.0"
+    version: "1.1.1"
   sky_engine:
     dependency: transitive
     description: flutter

@@ -17,6 +17,7 @@ dependencies:
   clock: ^1.1.3
   pdf: ^3.13.0
   printing: ^5.15.0
+  pdf_text_shaper: ^1.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -44,6 +45,11 @@ flutter:
           weight: 700
     - family: NotoSansKhmer
       fonts:
+        - asset: assets/fonts/NotoSansKhmer-Regular.ttf
+        - asset: assets/fonts/NotoSansKhmer-Bold.ttf
+          weight: 700
         - asset: assets/fonts/NotoSansKhmer.ttf
+
+
 
 

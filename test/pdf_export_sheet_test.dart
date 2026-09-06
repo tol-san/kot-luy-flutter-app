@@ -99,6 +99,26 @@ void main() {
     expect(find.text('សប្ដាហ៍នេះ'), findsOneWidget);
     expect(find.text('សប្ដាហ៍មុន'), findsOneWidget);
 
+    // Tap on 'ប្រចាំខែ' (Month) and verify stable 4x3 month grid
+    await tester.ensureVisible(find.text('ប្រចាំខែ'));
+    await tester.tap(find.text('ប្រចាំខែ'));
+    await tester.pumpAndSettle();
+    expect(find.text('ជ្រើសរើសឆ្នាំ៖ '), findsOneWidget);
+    // Verify all 12 month buttons are visible
+    for (var m = 1; m <= 12; m++) {
+      expect(find.byKey(Key('pdf_month_$m')), findsOneWidget);
+    }
+    // Tap month 9 (កញ្ញា) and month 12 (ធ្នូ)
+    await tester.ensureVisible(find.byKey(const Key('pdf_month_9')));
+    await tester.tap(find.byKey(const Key('pdf_month_9')));
+    await tester.pumpAndSettle();
+    expect(find.text('កញ្ញា'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('pdf_month_12')));
+    await tester.tap(find.byKey(const Key('pdf_month_12')));
+    await tester.pumpAndSettle();
+    expect(find.text('ធ្នូ'), findsOneWidget);
+
     // Action buttons exist
     expect(find.text('មើល / បោះពុម្ព'), findsOneWidget);
     expect(find.text('ទាញយក PDF'), findsOneWidget);

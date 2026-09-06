@@ -1,5 +1,4 @@
 import 'package:clock/clock.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
@@ -349,6 +348,7 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
               key: Key('pdf_period_${type.name}'),
               label: Text(type.label),
               selected: isSelected,
+              showCheckmark: false,
               onSelected: (_) => setState(() => _periodType = type),
               selectedColor: const Color(0xFFEAF0E1),
               backgroundColor: Colors.white,
@@ -372,18 +372,28 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
   }
 
   Widget _buildSubPeriodSelector() {
-    switch (_periodType) {
-      case ReportPeriodType.week:
-        return _buildWeekSelector();
-      case ReportPeriodType.month:
-        return _buildMonthSelector();
-      case ReportPeriodType.quarter:
-        return _buildQuarterSelector();
-      case ReportPeriodType.semester:
-        return _buildSemesterSelector();
-      case ReportPeriodType.year:
-        return _buildYearSelector();
-    }
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: KeyedSubtree(
+        key: ValueKey(_periodType),
+        child: () {
+          switch (_periodType) {
+            case ReportPeriodType.week:
+              return _buildWeekSelector();
+            case ReportPeriodType.month:
+              return _buildMonthSelector();
+            case ReportPeriodType.quarter:
+              return _buildQuarterSelector();
+            case ReportPeriodType.semester:
+              return _buildSemesterSelector();
+            case ReportPeriodType.year:
+              return _buildYearSelector();
+          }
+        }(),
+      ),
+    );
   }
 
   Widget _buildWeekSelector() {
@@ -448,33 +458,55 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildYearDropdown(),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: List.generate(12, (index) {
-            final monthNum = index + 1;
-            final isSelected = _selectedMonth == monthNum;
-            return ChoiceChip(
-              key: Key('pdf_month_$monthNum'),
-              label: Text(khmerMonths[index]),
-              selected: isSelected,
-              onSelected: (_) => setState(() => _selectedMonth = monthNum),
-              selectedColor: const Color(0xFFEAF0E1),
-              backgroundColor: Colors.white,
-              labelStyle: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? green : ink,
+        const SizedBox(height: 10),
+        Column(
+          children: [
+            for (int row = 0; row < 3; row++) ...[
+              if (row > 0) const SizedBox(height: 6),
+              Row(
+                children: [
+                  for (int col = 0; col < 4; col++) ...[
+                    if (col > 0) const SizedBox(width: 6),
+                    Expanded(
+                      child: _buildMonthButton(row * 4 + col + 1),
+                    ),
+                  ],
+                ],
               ),
-              side: BorderSide(color: isSelected ? green : line),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            );
-          }),
+            ],
+          ],
         ),
       ],
+    );
+  }
+
+  Widget _buildMonthButton(int monthNum) {
+    final isSelected = _selectedMonth == monthNum;
+    final monthName = khmerMonths[monthNum - 1];
+    return InkWell(
+      key: Key('pdf_month_$monthNum'),
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => setState(() => _selectedMonth = monthNum),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFEAF0E1) : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? green : line,
+            width: isSelected ? 1.4 : 1,
+          ),
+        ),
+        child: Text(
+          monthName,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? green : ink,
+          ),
+        ),
+      ),
     );
   }
 
@@ -613,6 +645,7 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
               key: Key('pdf_year_$y'),
               label: Text('$y'),
               selected: isSelected,
+              showCheckmark: false,
               onSelected: (_) => setState(() => _selectedYear = y),
               selectedColor: const Color(0xFFEAF0E1),
               backgroundColor: Colors.white,
@@ -621,7 +654,10 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color: isSelected ? green : ink,
               ),
-              side: BorderSide(color: isSelected ? green : line),
+              side: BorderSide(
+                color: isSelected ? green : line,
+                width: isSelected ? 1.4 : 1,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
