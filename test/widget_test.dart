@@ -44,6 +44,11 @@ void main() {
       ..addFont(rootBundle.load('assets/fonts/GoogleSans-Medium.ttf'))
       ..addFont(rootBundle.load('assets/fonts/GoogleSans-Bold.ttf'));
     await googleSans.load();
+    final googleSansKhmer = FontLoader('Google Sans Khmer')
+      ..addFont(rootBundle.load('assets/fonts/GoogleSansKhmer-Regular.ttf'))
+      ..addFont(rootBundle.load('assets/fonts/GoogleSansKhmer-Medium.ttf'))
+      ..addFont(rootBundle.load('assets/fonts/GoogleSansKhmer-Bold.ttf'));
+    await googleSansKhmer.load();
     final font = FontLoader('NotoSansKhmer')
       ..addFont(rootBundle.load('assets/fonts/NotoSansKhmer.ttf'));
     await font.load();

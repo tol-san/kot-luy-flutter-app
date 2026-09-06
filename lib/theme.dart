@@ -8,7 +8,7 @@ const green = Color(0xFF35634B);
 ThemeData appTheme() => ThemeData(
   useMaterial3: true,
   fontFamily: 'Google Sans',
-  fontFamilyFallback: const ['NotoSansKhmer'],
+  fontFamilyFallback: const ['Google Sans Khmer', 'NotoSansKhmer'],
   scaffoldBackgroundColor: paper,
   colorScheme: ColorScheme.fromSeed(
     seedColor: green,
@@ -39,7 +39,7 @@ ThemeData appTheme() => ThemeData(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       textStyle: const TextStyle(
         fontFamily: 'Google Sans',
-        fontFamilyFallback: ['NotoSansKhmer'],
+        fontFamilyFallback: ['Google Sans Khmer', 'NotoSansKhmer'],
         fontWeight: FontWeight.w600,
         fontSize: 15,
       ),

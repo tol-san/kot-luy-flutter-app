@@ -33,7 +33,15 @@ flutter:
           weight: 500
         - asset: assets/fonts/GoogleSans-Bold.ttf
           weight: 700
+    - family: Google Sans Khmer
+      fonts:
+        - asset: assets/fonts/GoogleSansKhmer-Regular.ttf
+        - asset: assets/fonts/GoogleSansKhmer-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/GoogleSansKhmer-Bold.ttf
+          weight: 700
     - family: NotoSansKhmer
       fonts:
         - asset: assets/fonts/NotoSansKhmer.ttf
+
 
