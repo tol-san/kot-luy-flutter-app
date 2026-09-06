@@ -17,15 +17,15 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
-  runApp(const KotLoyApp());
+  runApp(const KotLuyApp());
 }
 
-class KotLoyApp extends StatelessWidget {
-  const KotLoyApp({super.key, this.repository});
+class KotLuyApp extends StatelessWidget {
+  const KotLuyApp({super.key, this.repository});
   final ExpenseRepository? repository;
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'កត់លុយ • Kot Loy',
+    title: 'កត់លុយ • Kot Luy',
     debugShowCheckedModeBanner: false,
     theme: appTheme(),
     locale: const Locale('km'),

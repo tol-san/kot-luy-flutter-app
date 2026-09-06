@@ -1,4 +1,4 @@
-# កត់លុយ • Kot Loy
+# កត់លុយ • Kot Luy
 
 An Android expense tracker built with Flutter and SQLite. Khmer interface, Cambodian riel, a warm sage-and-cream palette, and a custom SVG wallet companion. The supplied logo is included.
 

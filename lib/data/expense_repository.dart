@@ -14,6 +14,7 @@ class ExpenseRepository {
   }) async {
     final dbFactory =
         factory ?? (kIsWeb ? databaseFactoryFfiWeb : databaseFactory);
+    // Keep the original filename so existing Kot Luy installations retain data.
     final location =
         path ?? p.join(await dbFactory.getDatabasesPath(), 'kot_loy.db');
     final db = await dbFactory.openDatabase(

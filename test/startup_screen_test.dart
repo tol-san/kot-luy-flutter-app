@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kot_loy/data/expense_repository.dart';
-import 'package:kot_loy/screens/home_screen.dart';
-import 'package:kot_loy/screens/startup_screen.dart';
-import 'package:kot_loy/theme.dart';
+import 'package:kot_luy/data/expense_repository.dart';
+import 'package:kot_luy/screens/home_screen.dart';
+import 'package:kot_luy/screens/startup_screen.dart';
+import 'package:kot_luy/theme.dart';
 
 import 'widget_test.dart' show MemoryRepository;
 

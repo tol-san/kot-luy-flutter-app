@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kot_loy/data/expense_repository.dart';
-import 'package:kot_loy/models/expense.dart';
+import 'package:kot_luy/data/expense_repository.dart';
+import 'package:kot_luy/models/expense.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -10,7 +10,7 @@ void main() {
   test(
     'SQLite persists Khmer records, exact riel amounts, edits and deletes',
     () async {
-      final directory = await Directory.systemTemp.createTemp('kot_loy_test_');
+      final directory = await Directory.systemTemp.createTemp('kot_luy_test_');
       final path = '${directory.path}/expenses.db';
       var repo = await ExpenseRepository.open(
         factory: databaseFactoryFfi,

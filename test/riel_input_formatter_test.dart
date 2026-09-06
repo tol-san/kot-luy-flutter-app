@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kot_loy/widgets/riel_input_formatter.dart';
+import 'package:kot_luy/widgets/riel_input_formatter.dart';
 
 void main() {
   final formatter = RielInputFormatter();

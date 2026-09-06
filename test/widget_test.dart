@@ -2,9 +2,9 @@ import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kot_loy/data/expense_repository.dart';
-import 'package:kot_loy/main.dart';
-import 'package:kot_loy/models/expense.dart';
+import 'package:kot_luy/data/expense_repository.dart';
+import 'package:kot_luy/main.dart';
+import 'package:kot_luy/models/expense.dart';
 import 'package:sqflite/sqflite.dart';
 
 class MemoryRepository implements ExpenseRepository {
@@ -68,7 +68,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await tester.pumpWidget(KotLoyApp(repository: repo));
+    await tester.pumpWidget(KotLuyApp(repository: repo));
     await tester.pumpAndSettle();
   }
 
