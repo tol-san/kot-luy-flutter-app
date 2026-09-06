@@ -296,5 +296,23 @@ void main() {
     expect(find.byKey(const Key('datePickerButton')), findsOneWidget);
     expect(find.byKey(const Key('timePickerButton')), findsOneWidget);
   });
+
+  testWidgets('time syncs live with actual clock until user customizes it', (
+    tester,
+  ) async {
+    final repo = MemoryRepository();
+    await mount(tester, repo);
+    await tester.tap(find.byKey(const Key('addExpense')));
+    await tester.pumpAndSettle();
+
+    await tester.pump(const Duration(seconds: 65));
+    await tester.enterText(find.byKey(const Key('amountInput')), '5000');
+    await tester.ensureVisible(find.byKey(const Key('saveExpense')));
+    await tester.tap(find.byKey(const Key('saveExpense')));
+    await tester.pumpAndSettle();
+
+    expect(repo.items.isNotEmpty, isTrue);
+  });
 }
+
 

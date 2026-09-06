@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 
@@ -41,10 +43,31 @@ class _ExpenseFormState extends State<ExpenseForm> {
   late ExpenseCategory _category =
       widget.expense?.category ?? ExpenseCategory.breakfast;
   late DateTime _date = widget.expense?.date ?? clock.now();
+  late bool _isCustomDateTime = widget.expense != null;
+  Timer? _ticker;
   bool _saving = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_isCustomDateTime) {
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!_isCustomDateTime && mounted) {
+          final now = clock.now();
+          if (_date.minute != now.minute ||
+              _date.hour != now.hour ||
+              _date.day != now.day) {
+            setState(() => _date = now);
+          }
+        }
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _ticker?.cancel();
     _amount.dispose();
     _otherTitle.dispose();
     super.dispose();
@@ -60,13 +83,14 @@ class _ExpenseFormState extends State<ExpenseForm> {
       final title = _category == ExpenseCategory.other
           ? (_otherTitle.text.trim().isEmpty ? 'ផ្សេងៗ' : _otherTitle.text.trim())
           : _category.label;
+      final dateToSave = _isCustomDateTime ? _date : clock.now();
       await widget.repository.save(
         Expense(
           id: widget.expense?.id,
           title: title,
           amount: int.parse(_amount.text.replaceAll(',', '')),
           category: _category,
-          date: _date,
+          date: dateToSave,
           note: '',
         ),
       );
@@ -304,15 +328,17 @@ class _ExpenseFormState extends State<ExpenseForm> {
                               ),
                             );
                             if (picked != null && mounted) {
-                              setState(
-                                () => _date = DateTime(
+                              _ticker?.cancel();
+                              setState(() {
+                                _isCustomDateTime = true;
+                                _date = DateTime(
                                   picked.year,
                                   picked.month,
                                   picked.day,
                                   _date.hour,
                                   _date.minute,
-                                ),
-                              );
+                                );
+                              });
                             }
                           },
                           child: Padding(
@@ -370,15 +396,17 @@ class _ExpenseFormState extends State<ExpenseForm> {
                               ),
                             );
                             if (pickedTime != null && mounted) {
-                              setState(
-                                () => _date = DateTime(
+                              _ticker?.cancel();
+                              setState(() {
+                                _isCustomDateTime = true;
+                                _date = DateTime(
                                   _date.year,
                                   _date.month,
                                   _date.day,
                                   pickedTime.hour,
                                   pickedTime.minute,
-                                ),
-                              );
+                                );
+                              });
                             }
                           },
                           child: Padding(
