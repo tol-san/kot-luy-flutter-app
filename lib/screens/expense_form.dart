@@ -153,7 +153,8 @@ class _ExpenseFormState extends State<ExpenseForm> {
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
-                  children: [5000, 10000, 20000]
+                  runSpacing: 8,
+                  children: [5000, 10000, 20000, 50000, 100000]
                       .map(
                         (v) => ActionChip(
                           label: Text(
