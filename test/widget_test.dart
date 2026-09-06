@@ -274,4 +274,17 @@ void main() {
     expect(repo.items.last.title, 'ផ្សេងៗ');
     expect(repo.items.last.amount, 3000);
   });
+
+  testWidgets('date and time picker buttons are present in expense form', (
+    tester,
+  ) async {
+    final repo = MemoryRepository();
+    await mount(tester, repo);
+    await tester.tap(find.byKey(const Key('addExpense')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('datePickerButton')), findsOneWidget);
+    expect(find.byKey(const Key('timePickerButton')), findsOneWidget);
+  });
 }
+

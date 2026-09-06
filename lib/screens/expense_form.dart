@@ -278,46 +278,144 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   ),
                 ],
                 const SizedBox(height: 20),
-                Material(
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: const BorderSide(color: line),
-                  ),
-                  child: ListTile(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    leading: const Icon(
-                      Icons.calendar_today_outlined,
-                      size: 20,
-                      color: green,
-                    ),
-                    title: Text(
-                      displayDate(_date),
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    trailing: const Icon(Icons.expand_more),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: _date,
-                        firstDate: DateTime(2000),
-                        lastDate: clock.now(),
-                      );
-                      if (picked != null && mounted) {
-                        setState(
-                          () => _date = DateTime(
-                            picked.year,
-                            picked.month,
-                            picked.day,
-                            _date.hour,
-                            _date.minute,
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Material(
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: line),
+                        ),
+                        child: InkWell(
+                          key: const Key('datePickerButton'),
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () async {
+                            final now = clock.now();
+                            final effectiveLastDate =
+                                now.isAfter(_date) ? now : _date;
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: _date,
+                              firstDate: DateTime(2000),
+                              lastDate: effectiveLastDate.add(
+                                const Duration(days: 365),
+                              ),
+                            );
+                            if (picked != null && mounted) {
+                              setState(
+                                () => _date = DateTime(
+                                  picked.year,
+                                  picked.month,
+                                  picked.day,
+                                  _date.hour,
+                                  _date.minute,
+                                ),
+                              );
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 16,
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.calendar_today_outlined,
+                                  size: 18,
+                                  color: green,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    displayDate(_date),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.expand_more,
+                                  size: 18,
+                                  color: muted,
+                                ),
+                              ],
+                            ),
                           ),
-                        );
-                      }
-                    },
-                  ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: Material(
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: line),
+                        ),
+                        child: InkWell(
+                          key: const Key('timePickerButton'),
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () async {
+                            final pickedTime = await showTimePicker(
+                              context: context,
+                              initialTime: TimeOfDay(
+                                hour: _date.hour,
+                                minute: _date.minute,
+                              ),
+                            );
+                            if (pickedTime != null && mounted) {
+                              setState(
+                                () => _date = DateTime(
+                                  _date.year,
+                                  _date.month,
+                                  _date.day,
+                                  pickedTime.hour,
+                                  pickedTime.minute,
+                                ),
+                              );
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 16,
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.access_time_rounded,
+                                  size: 18,
+                                  color: green,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    formatTime(_date),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.expand_more,
+                                  size: 18,
+                                  color: muted,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 if (_error != null)
                   Padding(
