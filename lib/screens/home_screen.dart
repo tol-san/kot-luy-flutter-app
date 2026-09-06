@@ -71,10 +71,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final saved = await showExpenseForm(context, widget.repository);
     if (saved == true && mounted) {
       await _load();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('បានកត់ចំណាយហើយ! មួយជំហានតូចទៀត 🌱')),
-      );
     }
   }
 
