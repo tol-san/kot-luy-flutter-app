@@ -176,7 +176,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('addExpense')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('20,000 ៛'));
+      await tester.tap(find.byKey(const Key('quick_amount_20000')));
       await tester.pumpAndSettle();
       expect(
         tester
@@ -222,17 +222,17 @@ void main() {
     expect(tester.widget<TextFormField>(inputFinder).controller!.text, '');
 
     // Tap 5,000 -> 5,000
-    await tester.tap(find.text('5,000 ៛'));
+    await tester.tap(find.text('+5,000 ៛'));
     await tester.pumpAndSettle();
     expect(tester.widget<TextFormField>(inputFinder).controller!.text, '5,000');
 
     // Tap 5,000 again (double tap / 2nd tap) -> 10,000
-    await tester.tap(find.text('5,000 ៛'));
+    await tester.tap(find.text('+5,000 ៛'));
     await tester.pumpAndSettle();
     expect(tester.widget<TextFormField>(inputFinder).controller!.text, '10,000');
 
     // Tap 10,000 -> 20,000
-    await tester.tap(find.text('10,000 ៛'));
+    await tester.tap(find.text('+10,000 ៛'));
     await tester.pumpAndSettle();
     expect(tester.widget<TextFormField>(inputFinder).controller!.text, '20,000');
 

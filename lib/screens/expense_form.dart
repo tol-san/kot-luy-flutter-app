@@ -186,8 +186,9 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   children: [
                     ...[5000, 10000, 20000, 50000, 100000].map(
                       (v) => ActionChip(
+                        key: Key('quick_amount_$v'),
                         label: Text(
-                          riel(v),
+                          '+${riel(v)}',
                           style: const TextStyle(fontSize: 11),
                         ),
                         side: const BorderSide(color: line),
