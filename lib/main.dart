@@ -7,7 +7,7 @@ import 'screens/home_screen.dart';
 import 'screens/startup_screen.dart';
 import 'theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -17,7 +17,13 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
-  runApp(const KotLuyApp());
+  ExpenseRepository? repository;
+  try {
+    repository = await ExpenseRepository.open();
+  } catch (_) {
+    // If opening database fails, repository remains null and falls back to StartupScreen with retry.
+  }
+  runApp(KotLuyApp(repository: repository));
 }
 
 class KotLuyApp extends StatelessWidget {
