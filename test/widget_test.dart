@@ -94,8 +94,9 @@ void main() {
         tester.widget<Text>(find.byKey(const Key('totalAmount'))).data,
         '12,500 ៛',
       );
-      await tester.ensureVisible(find.text('−12,500 ៛'));
-      await tester.tap(find.text('−12,500 ៛'));
+      final singleId = repo.items.single.id;
+      await tester.ensureVisible(find.byKey(Key('expense_item_$singleId')));
+      await tester.tap(find.byKey(Key('expense_item_$singleId')));
       await tester.pumpAndSettle();
       expect(find.text('ចំណាយលម្អិត'), findsOneWidget);
       await tester.ensureVisible(find.text('កែប្រែចំណាយ'));
@@ -153,8 +154,9 @@ void main() {
         find.byType(MaterialApp),
         matchesGoldenFile('previews/home.png'),
       );
-      await tester.ensureVisible(find.text('−12,000 ៛'));
-      await tester.tap(find.text('−12,000 ៛'));
+      final firstItemId = repo.items.first.id;
+      await tester.ensureVisible(find.byKey(Key('expense_item_$firstItemId')));
+      await tester.tap(find.byKey(Key('expense_item_$firstItemId')));
       await tester.pumpAndSettle();
       await expectLater(
         find.byType(MaterialApp),

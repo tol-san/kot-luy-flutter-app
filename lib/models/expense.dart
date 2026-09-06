@@ -141,3 +141,15 @@ String dayLabel(DateTime date, DateTime now) {
   if (day == today.subtract(const Duration(days: 1))) return 'ម្សិលមិញ';
   return displayDate(date);
 }
+
+String formatExpenseDateTime(DateTime date, DateTime now) {
+  final hour = date.hour.toString().padLeft(2, '0');
+  final minute = date.minute.toString().padLeft(2, '0');
+  final timeStr = '$hour:$minute';
+  final startOfToday = DateTime(now.year, now.month, now.day);
+  final startOfDate = DateTime(date.year, date.month, date.day);
+  if (startOfDate == startOfToday) {
+    return timeStr;
+  }
+  return '$timeStr • ${displayDate(date)}';
+}

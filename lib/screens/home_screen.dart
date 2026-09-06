@@ -514,45 +514,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         itemCount: items.length,
         itemBuilder: (context, index) {
           final e = items[index];
-          final group = dayLabel(e.date, clock.now());
-          final showGroup =
-              index == 0 ||
-              group != dayLabel(items[index - 1].date, clock.now());
           return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (showGroup)
-                Padding(
-                  padding: const EdgeInsets.only(top: 18, bottom: 10),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          group,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: muted,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        riel(
-                          items
-                              .where(
-                                (x) => dayLabel(x.date, clock.now()) == group,
-                              )
-                              .fold(0, (a, x) => a + x.amount),
-                        ),
-                        style: const TextStyle(fontSize: 10, color: muted),
-                      ),
-                    ],
-                  ),
-                ),
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
+                  key: Key('expense_item_${e.id}'),
+                  borderRadius: BorderRadius.circular(12),
                   onTap: () async {
                     await Navigator.push(
                       context,
@@ -566,23 +534,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     if (mounted) _load();
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     child: Row(
                       children: [
-                        Container(
-                          width: 47,
-                          height: 47,
-                          decoration: BoxDecoration(
-                            color: e.category.background,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Icon(
-                            e.category.icon,
-                            color: e.category.color,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 13),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,45 +547,42 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                                  fontSize: 15,
+                                  color: ink,
                                 ),
                               ),
-                              const SizedBox(height: 3),
+                              const SizedBox(height: 4),
                               Text(
-                                e.category.label,
+                                formatExpenseDateTime(e.date, clock.now()),
                                 style: const TextStyle(
                                   color: muted,
-                                  fontSize: 10,
+                                  fontSize: 12,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Flexible(
-                          child: Text(
-                            '−${riel(e.amount)}',
-                            maxLines: 2,
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        const SizedBox(width: 12),
+                        Text(
+                          riel(e.amount),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: ink,
                           ),
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 6),
                         const Icon(
                           Icons.chevron_right_rounded,
                           color: Color(0xFFB2B8AC),
-                          size: 17,
+                          size: 18,
                         ),
                       ],
                     ),
                   ),
                 ),
               ),
-              if (index < items.length - 1)
-                const Divider(height: 1, indent: 60),
+              const Divider(height: 1, color: line),
             ],
           );
         },
