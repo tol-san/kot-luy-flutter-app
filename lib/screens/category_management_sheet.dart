@@ -57,6 +57,7 @@ class CategoryManagementSheet extends StatefulWidget {
 
 class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
   List<ExpenseCategory> _categories = [];
+  List<ExpenseCategory> _archivedCategories = [];
   bool _loading = true;
   bool _adding = false;
   String? _highlightedCategoryId;
@@ -97,10 +98,11 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
   // ── Data helpers ──────────────────────────────────────────────────────────
 
   Future<void> _loadCategories() async {
-    final list = await widget.repository.getCategories();
+    final list = await widget.repository.getCategories(includeArchived: true);
     if (mounted) {
       setState(() {
-        _categories = List.of(list);
+        _categories = list.where((c) => !c.isArchived).toList();
+        _archivedCategories = list.where((c) => c.isArchived).toList();
         _loading = false;
       });
       widget.onCategoriesChanged?.call(_categories);
@@ -175,11 +177,28 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
       );
       return;
     }
+    bool used;
+    try {
+      used = await widget.repository.categoryHasExpenses(category.name);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('មិនអាចពិនិត្យមុខចំណាយបានទេ សូមព្យាយាមម្ដងទៀត'),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('លុបមុខចំណាយនេះ?'),
-        content: Text('«${category.label}» នឹងត្រូវបានលុបចេញពីបញ្ជីមុខចំណាយ។'),
+        title: Text(used ? 'លាក់មុខចំណាយនេះ?' : 'លុបមុខចំណាយនេះ?'),
+        content: Text(
+          used
+              ? 'លាក់មុខចំណាយ «${category.label}»? កំណត់ត្រាចាស់ និងរបាយការណ៍សង្ខេបនឹងនៅដដែល។ មុខចំណាយនេះនឹងលែងបង្ហាញពេលបន្ថែមចំណាយថ្មី។'
+              : '«${category.label}» នឹងត្រូវបានលុបជាអចិន្ត្រៃយ៍។',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -187,8 +206,8 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'លុប',
+            child: Text(
+              used ? 'លាក់' : 'លុប',
               style: TextStyle(color: Color(0xFFAD5347)),
             ),
           ),
@@ -223,6 +242,20 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
     final ids = _categories.map((c) => c.name).toList();
     widget.repository.reorderCategories(ids);
     widget.onCategoriesChanged?.call(_categories);
+  }
+
+  Future<void> _restoreCategory(ExpenseCategory category) async {
+    try {
+      await widget.repository.restoreCategory(category.name);
+      await _loadCategories();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('មិនអាចបង្ហាញមុខចំណាយឡើងវិញបានទេ សូមព្យាយាមម្ដងទៀត'),
+        ),
+      );
+    }
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -325,6 +358,28 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
       key: const Key('categoryReorderList'),
       shrinkWrap: true,
       buildDefaultDragHandles: false,
+      footer: _archivedCategories.isEmpty
+          ? null
+          : Material(
+              color: paper,
+              child: ExpansionTile(
+                title: Text(
+                  'មុខចំណាយដែលបានលាក់ (${_archivedCategories.length})',
+                ),
+                children: _archivedCategories
+                    .map(
+                      (category) => ListTile(
+                        title: Text(category.label),
+                        leading: Icon(category.icon, color: category.color),
+                        trailing: TextButton(
+                          onPressed: () => _restoreCategory(category),
+                          child: const Text('បង្ហាញឡើងវិញ'),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
       itemCount: _categories.length,
       onReorderItem: _onReorderItem,

@@ -24,7 +24,7 @@ class ExpenseRepository {
     final db = await dbFactory.openDatabase(
       location,
       options: OpenDatabaseOptions(
-        version: 3,
+        version: 4,
         onCreate: (db, version) async {
           await db.execute('''CREATE TABLE expenses (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,6 +46,15 @@ class ExpenseRepository {
             // categories once, rather than scanning expenses on every launch.
             await _removeLegacyCategory(db);
             await _deduplicateCategories(db);
+          }
+          if (oldVersion < 4) {
+            final columns = await db.rawQuery('PRAGMA table_info(categories)');
+            if (!columns.any((column) => column['name'] == 'is_archived')) {
+              await db.execute(
+                'ALTER TABLE categories ADD COLUMN '
+                'is_archived INTEGER NOT NULL DEFAULT 0',
+              );
+            }
           }
         },
       ),
@@ -101,7 +110,8 @@ class ExpenseRepository {
       label TEXT NOT NULL,
       color_value INTEGER NOT NULL,
       sort_order INTEGER NOT NULL,
-      is_custom INTEGER NOT NULL DEFAULT 0
+      is_custom INTEGER NOT NULL DEFAULT 0,
+      is_archived INTEGER NOT NULL DEFAULT 0
     )''');
     final count =
         Sqflite.firstIntValue(
@@ -126,7 +136,9 @@ class ExpenseRepository {
     await db.delete('categories', where: "id = 'other'");
   }
 
-  Future<List<ExpenseCategory>> getCategories() async {
+  Future<List<ExpenseCategory>> getCategories({
+    bool includeArchived = false,
+  }) async {
     final rows = await database.query('categories', orderBy: 'sort_order ASC');
     if (rows.isEmpty) {
       await _createCategoriesTable(database);
@@ -143,9 +155,9 @@ class ExpenseRepository {
     }
     if (hasDuplicates) {
       await database.transaction(_deduplicateCategories);
-      return getCategories();
+      return getCategories(includeArchived: includeArchived);
     }
-    return rows.map((r) {
+    return rows.where((r) => includeArchived || r['is_archived'] != 1).map((r) {
       final id = r['id'] as String;
       final label = r['label'] as String;
       final colorVal = r['color_value'] as int;
@@ -166,6 +178,7 @@ class ExpenseRepository {
         color: color,
         background: ExpenseCategory.autoBackground(color),
         isCustom: isCustom,
+        isArchived: r['is_archived'] == 1,
       );
     }).toList();
   }
@@ -173,12 +186,12 @@ class ExpenseRepository {
   Future<ExpenseCategory> addCategory(String label) async {
     final clean = label.trim();
     if (clean.isEmpty) throw ArgumentError('ឈ្មោះមុខចំណាយមិនអាចទទេបានទេ');
-    final current = await getCategories();
+    final current = await getCategories(includeArchived: true);
     final isDuplicate = current.any(
       (c) => c.label.trim().toLowerCase() == clean.toLowerCase(),
     );
     if (isDuplicate) {
-      throw ArgumentError('មុខចំណាយនេះមានរួចហើយ');
+      throw ArgumentError('មុខចំណាយនេះមានរួចហើយ។ បើបានលាក់ សូមបង្ហាញវាឡើងវិញ។');
     }
     final customCount = current.where((c) => c.isCustom).length;
     final color = ExpenseCategory
@@ -214,24 +227,26 @@ class ExpenseRepository {
         whereArgs: [id],
         limit: 1,
       );
-      if (usage.isNotEmpty) {
-        throw StateError(
-          'មិនអាចលុបមុខចំណាយនេះបានទេ ព្រោះនៅមានកំណត់ត្រាចំណាយប្រើវា',
-        );
-      }
       final remaining = await txn.query(
         'categories',
-        where: 'id != ?',
+        where: 'id != ? AND is_archived = 0',
         whereArgs: [id],
         orderBy: 'sort_order ASC',
         limit: 1,
       );
       if (remaining.isEmpty) {
-        throw StateError(
-          'មិនអាចលុបបានទេ ត្រូវមានមុខចំណាយយ៉ាងហោចណាស់មួយ',
-        );
+        throw StateError('មិនអាចលុបបានទេ ត្រូវមានមុខចំណាយយ៉ាងហោចណាស់មួយ');
       }
-      await txn.delete('categories', where: 'id = ?', whereArgs: [id]);
+      if (usage.isNotEmpty) {
+        await txn.update(
+          'categories',
+          {'is_archived': 1},
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      } else {
+        await txn.delete('categories', where: 'id = ?', whereArgs: [id]);
+      }
     });
     unawaited(DriveBackup.dataChanged(database.path));
   }
@@ -253,12 +268,31 @@ class ExpenseRepository {
   }
 
   Future<List<Expense>> all({List<ExpenseCategory>? categories}) async {
-    final resolvedCategories = categories ?? await getCategories();
+    // Always resolve historical metadata, even when the caller supplies active choices.
+    final resolvedCategories = await getCategories(includeArchived: true);
     final rows = await database.query(
       'expenses',
       orderBy: 'date DESC, id DESC',
     );
     return rows.map((r) => Expense.fromMap(r, resolvedCategories)).toList();
+  }
+
+  Future<bool> categoryHasExpenses(String id) async => (await database.query(
+    'expenses',
+    columns: ['id'],
+    where: 'category = ?',
+    whereArgs: [id],
+    limit: 1,
+  )).isNotEmpty;
+
+  Future<void> restoreCategory(String id) async {
+    await database.update(
+      'categories',
+      {'is_archived': 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    unawaited(DriveBackup.dataChanged(database.path));
   }
 
   Future<void> save(Expense expense) async {

@@ -5,11 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kot_luy/data/expense_repository.dart';
 import 'package:kot_luy/main.dart';
 import 'package:kot_luy/models/expense.dart';
+import 'package:kot_luy/screens/category_management_sheet.dart';
+import 'package:kot_luy/screens/expense_form.dart';
 import 'package:sqflite/sqflite.dart';
 
 class MemoryRepository implements ExpenseRepository {
   final List<Expense> items = [];
   final List<ExpenseCategory> categories = [...ExpenseCategory.values];
+  final Set<String> archivedIds = {};
   @override
   Database get database => throw UnsupportedError('Test double');
   @override
@@ -39,8 +42,22 @@ class MemoryRepository implements ExpenseRepository {
       items.removeWhere((e) => ids.contains(e.id));
 
   @override
-  Future<List<ExpenseCategory>> getCategories() async =>
-      List.unmodifiable(categories);
+  Future<List<ExpenseCategory>> getCategories({
+    bool includeArchived = false,
+  }) async => categories
+      .where((c) => includeArchived || !archivedIds.contains(c.name))
+      .map(
+        (c) => ExpenseCategory(
+          name: c.name,
+          label: c.label,
+          icon: c.icon,
+          color: c.color,
+          background: c.background,
+          isCustom: c.isCustom,
+          isArchived: archivedIds.contains(c.name),
+        ),
+      )
+      .toList();
 
   @override
   Future<ExpenseCategory> addCategory(String label) async {
@@ -52,8 +69,8 @@ class MemoryRepository implements ExpenseRepository {
       throw ArgumentError('មុខចំណាយនេះមានរួចហើយ');
     }
     final customCount = categories.where((c) => c.isCustom).length;
-    final color = ExpenseCategory.autoColors[(customCount + 6) %
-        ExpenseCategory.autoColors.length];
+    final color = ExpenseCategory
+        .autoColors[(customCount + 6) % ExpenseCategory.autoColors.length];
     final id = 'custom_${DateTime.now().millisecondsSinceEpoch}_$customCount';
     final cat = ExpenseCategory(
       name: id,
@@ -69,21 +86,20 @@ class MemoryRepository implements ExpenseRepository {
 
   @override
   Future<void> deleteCategory(String id) async {
-    categories.removeWhere((c) => c.name == id);
-    final fallback =
-        categories.isNotEmpty ? categories.first : ExpenseCategory.breakfast;
-    for (var i = 0; i < items.length; i++) {
-      if (items[i].category.name == id) {
-        items[i] = Expense(
-          id: items[i].id,
-          title: items[i].title,
-          amount: items[i].amount,
-          category: fallback,
-          date: items[i].date,
-          note: items[i].note,
-        );
-      }
+    if (await categoryHasExpenses(id)) {
+      archivedIds.add(id);
+    } else {
+      categories.removeWhere((c) => c.name == id);
     }
+  }
+
+  @override
+  Future<bool> categoryHasExpenses(String id) async =>
+      items.any((e) => e.category.name == id);
+
+  @override
+  Future<void> restoreCategory(String id) async {
+    archivedIds.remove(id);
   }
 
   @override
@@ -101,6 +117,84 @@ class MemoryRepository implements ExpenseRepository {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  testWidgets('used category can be archived and restored from management', (
+    tester,
+  ) async {
+    final repo = MemoryRepository();
+    await repo.save(
+      Expense(
+        title: 'កាហ្វេ',
+        amount: 20000,
+        category: ExpenseCategory.coffee,
+        date: DateTime(2026, 9, 6),
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: CategoryManagementSheet(repository: repo)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final row = find
+        .ancestor(
+          of: find.byKey(const Key('select_category_coffee')),
+          matching: find.byType(AnimatedContainer),
+        )
+        .first;
+    await tester.tap(
+      find.descendant(of: row, matching: find.byType(IconButton)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('លាក់មុខចំណាយនេះ?'), findsOneWidget);
+    await tester.tap(find.text('លាក់'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('select_category_coffee')), findsNothing);
+    expect(repo.items.single.amount, 20000);
+    expect(repo.items.single.category.name, 'coffee');
+    await tester.ensureVisible(find.text('មុខចំណាយដែលបានលាក់ (1)'));
+    await tester.tap(find.text('មុខចំណាយដែលបានលាក់ (1)'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('បង្ហាញឡើងវិញ'));
+    await tester.tap(find.text('បង្ហាញឡើងវិញ'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('select_category_coffee')), findsOneWidget);
+    expect(repo.archivedIds, isEmpty);
+  });
+
+  testWidgets(
+    'editing archived expense keeps its category after managing choices',
+    (tester) async {
+      final repo = MemoryRepository();
+      await repo.save(
+        Expense(
+          title: 'កាហ្វេ',
+          amount: 20000,
+          category: ExpenseCategory.coffee,
+          date: DateTime(2026, 9, 6),
+        ),
+      );
+      repo.archivedIds.add('coffee');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ExpenseForm(repository: repo, expense: repo.items.single),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('category_coffee')), findsNothing);
+      await tester.tap(find.byKey(const Key('manageCategoriesButton')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('closeCategorySheet')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('amountInput')), '25000');
+      await tester.ensureVisible(find.byKey(const Key('saveExpense')));
+      await tester.tap(find.byKey(const Key('saveExpense')));
+      await tester.pumpAndSettle();
+      expect(repo.items.single.category.name, 'coffee');
+      expect(repo.items.single.amount, 25000);
+    },
+  );
   setUpAll(() async {
     final googleSans = FontLoader('Google Sans')
       ..addFont(rootBundle.load('assets/fonts/GoogleSans-Regular.ttf'))
@@ -276,37 +370,47 @@ void main() {
     expect(tester.takeException(), isNull);
     tester.view.resetViewInsets();
   });
-  testWidgets('quick amount chips accumulate on tap and clear button resets amount', (
-    tester,
-  ) async {
-    final repo = MemoryRepository();
-    await mount(tester, repo);
-    await tester.tap(find.byKey(const Key('addExpense')));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'quick amount chips accumulate on tap and clear button resets amount',
+    (tester) async {
+      final repo = MemoryRepository();
+      await mount(tester, repo);
+      await tester.tap(find.byKey(const Key('addExpense')));
+      await tester.pumpAndSettle();
 
-    final inputFinder = find.byKey(const Key('amountInput'));
-    expect(tester.widget<TextFormField>(inputFinder).controller!.text, '');
+      final inputFinder = find.byKey(const Key('amountInput'));
+      expect(tester.widget<TextFormField>(inputFinder).controller!.text, '');
 
-    // Tap 5,000 -> 5,000
-    await tester.tap(find.text('+5,000 ៛'));
-    await tester.pumpAndSettle();
-    expect(tester.widget<TextFormField>(inputFinder).controller!.text, '5,000');
+      // Tap 5,000 -> 5,000
+      await tester.tap(find.text('+5,000 ៛'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextFormField>(inputFinder).controller!.text,
+        '5,000',
+      );
 
-    // Tap 5,000 again (double tap / 2nd tap) -> 10,000
-    await tester.tap(find.text('+5,000 ៛'));
-    await tester.pumpAndSettle();
-    expect(tester.widget<TextFormField>(inputFinder).controller!.text, '10,000');
+      // Tap 5,000 again (double tap / 2nd tap) -> 10,000
+      await tester.tap(find.text('+5,000 ៛'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextFormField>(inputFinder).controller!.text,
+        '10,000',
+      );
 
-    // Tap 10,000 -> 20,000
-    await tester.tap(find.text('+10,000 ៛'));
-    await tester.pumpAndSettle();
-    expect(tester.widget<TextFormField>(inputFinder).controller!.text, '20,000');
+      // Tap 10,000 -> 20,000
+      await tester.tap(find.text('+10,000 ៛'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextFormField>(inputFinder).controller!.text,
+        '20,000',
+      );
 
-    // Tap clear button -> empty
-    await tester.tap(find.byKey(const Key('clearAmount')));
-    await tester.pumpAndSettle();
-    expect(tester.widget<TextFormField>(inputFinder).controller!.text, '');
-  });
+      // Tap clear button -> empty
+      await tester.tap(find.byKey(const Key('clearAmount')));
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextFormField>(inputFinder).controller!.text, '');
+    },
+  );
   testWidgets('selecting other category shows custom title input', (
     tester,
   ) async {
@@ -405,15 +509,18 @@ void main() {
       expect(find.byType(DropdownButton), findsNothing);
 
       // Verify typing shows suggestions based on already existing names
-      await tester.enterText(
-        find.byKey(const Key('addCategoryInput')),
-        'បាយ',
-      );
+      await tester.enterText(find.byKey(const Key('addCategoryInput')), 'បាយ');
       await tester.pumpAndSettle();
       expect(find.text('មុខចំណាយដែលមានស្រាប់:'), findsOneWidget);
-      expect(find.byKey(const Key('categorySuggestion_breakfast')), findsOneWidget);
+      expect(
+        find.byKey(const Key('categorySuggestion_breakfast')),
+        findsOneWidget,
+      );
       expect(find.byKey(const Key('categorySuggestion_lunch')), findsOneWidget);
-      expect(find.byKey(const Key('categorySuggestion_dinner')), findsOneWidget);
+      expect(
+        find.byKey(const Key('categorySuggestion_dinner')),
+        findsOneWidget,
+      );
 
       // Verify duplicate category cannot be added (e.g. 'កាហ្វេ')
       await tester.enterText(
@@ -421,7 +528,10 @@ void main() {
         'កាហ្វេ',
       );
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('categorySuggestion_coffee')), findsOneWidget);
+      expect(
+        find.byKey(const Key('categorySuggestion_coffee')),
+        findsOneWidget,
+      );
 
       // Verify duplicate category changes button label to 'មានរួចហើយ' and disables it
       expect(find.text('មានរួចហើយ'), findsOneWidget);
@@ -533,9 +643,7 @@ void main() {
       expect(find.text('បានជ្រើសរើស 2'), findsOneWidget);
 
       // 6. Tap delete button to open confirmation dialog
-      await tester.tap(
-        find.byKey(const Key('deleteSelectedExpensesButton')),
-      );
+      await tester.tap(find.byKey(const Key('deleteSelectedExpensesButton')));
       await tester.pumpAndSettle();
 
       expect(find.text('លុបចំណាយដែលបានជ្រើសរើស?'), findsOneWidget);
@@ -557,4 +665,3 @@ void main() {
     },
   );
 }
-

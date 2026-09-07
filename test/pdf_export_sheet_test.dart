@@ -11,10 +11,13 @@ class FakeExpenseRepository extends Fake implements ExpenseRepository {
   final List<Expense> _expenses;
 
   @override
-  Future<List<Expense>> all({List<ExpenseCategory>? categories}) async => _expenses;
+  Future<List<Expense>> all({List<ExpenseCategory>? categories}) async =>
+      _expenses;
 
   @override
-  Future<List<ExpenseCategory>> getCategories() async => ExpenseCategory.values;
+  Future<List<ExpenseCategory>> getCategories({
+    bool includeArchived = false,
+  }) async => ExpenseCategory.values;
 }
 
 void main() {
@@ -193,18 +196,15 @@ void main() {
     expect(savedFilename, startsWith('kot_luy_detailed_'));
 
     // Verify SnackBar appears with download message and 'បើក' button
-    expect(
-      find.text('បានទាញយក PDF'),
-      findsOneWidget,
-    );
+    expect(find.text('បានទាញយក PDF'), findsOneWidget);
     expect(find.text('បើក'), findsOneWidget);
-    final downloadMessage = tester.widget<Text>(
-      find.text('បានទាញយក PDF'),
-    );
+    final downloadMessage = tester.widget<Text>(find.text('បានទាញយក PDF'));
     expect(downloadMessage.maxLines, 1);
     expect(downloadMessage.overflow, TextOverflow.ellipsis);
     final notification = tester.widget<SnackBar>(find.byType(SnackBar));
-    final messenger = ScaffoldMessenger.of(tester.element(find.byType(SnackBar)));
+    final messenger = ScaffoldMessenger.of(
+      tester.element(find.byType(SnackBar)),
+    );
 
     // Tap 'បើក'
     await tester.tap(find.text('បើក'));

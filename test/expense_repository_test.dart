@@ -21,6 +21,9 @@ void main() {
       try {
         // Reproduce an installed v2 database with legacy and duplicate categories.
         await repo.database.setVersion(2);
+        await repo.database.execute(
+          'ALTER TABLE categories DROP COLUMN is_archived',
+        );
         for (final id in ['other', 'duplicate']) {
           await repo.database.insert('categories', {
             'id': id,
@@ -44,7 +47,7 @@ void main() {
           factory: databaseFactoryFfi,
           path: path,
         );
-        expect(await repo.database.getVersion(), 3);
+        expect(await repo.database.getVersion(), 4);
         final expenses = await repo.all();
         expect(expenses.length, 2);
         expect(
@@ -242,17 +245,27 @@ void main() {
       expect(expenses.single.category.name, customCat.name);
       expect(expenses.single.category.label, 'ថ្លៃផ្ទះ');
 
-      // 5. Used categories cannot be deleted or their expenses reassigned.
-      await expectLater(repo.deleteCategory(customCat.name), throwsStateError);
-      final catsAfterDelete = await repo.getCategories();
-      expect(catsAfterDelete.length, 6);
-      expect(catsAfterDelete.any((c) => c.name == customCat.name), isTrue);
-
-      final expensesAfterDelete = await repo.all();
-      expect(
-        expensesAfterDelete.single.category.name,
-        customCat.name,
+      // Used categories are archived while their historical metadata survives.
+      await repo.deleteCategory(customCat.name);
+      await repo.close();
+      repo = await ExpenseRepository.open(
+        factory: databaseFactoryFfi,
+        path: path,
       );
+      final catsAfterDelete = await repo.getCategories();
+      expect(catsAfterDelete.length, 5);
+      expect(catsAfterDelete.any((c) => c.name == customCat.name), isFalse);
+
+      final expensesAfterDelete = await repo.all(categories: catsAfterDelete);
+      expect(expensesAfterDelete.single.category.isArchived, isTrue);
+      expect(expensesAfterDelete.single.category.label, customCat.label);
+      expect(expensesAfterDelete.single.category.color, customCat.color);
+      expect(expensesAfterDelete.single.amount, 200000);
+      await expectLater(repo.addCategory(customCat.label), throwsArgumentError);
+      await repo.restoreCategory(customCat.name);
+      expect((await repo.getCategories()).length, 6);
+      expect((await repo.all()).single.category.isArchived, isFalse);
+      expect(expensesAfterDelete.single.category.name, customCat.name);
 
       // Once no expense uses it, the category can be deleted.
       await repo.delete(expensesAfterDelete.single.id!);

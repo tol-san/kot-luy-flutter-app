@@ -66,7 +66,8 @@ void main() {
         label TEXT NOT NULL,
         color_value INTEGER NOT NULL,
         sort_order INTEGER NOT NULL,
-        is_custom INTEGER NOT NULL DEFAULT 0
+        is_custom INTEGER NOT NULL DEFAULT 0,
+        is_archived INTEGER NOT NULL DEFAULT 0
       )''');
       await db.execute('''CREATE TABLE expenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,20 +111,38 @@ void main() {
       expect(snapshot.categories.first['id'], 'lunch');
     });
 
+    test(
+      'archive status survives backup and legacy backups remain active',
+      () async {
+        await db.update('categories', {'is_archived': 1});
+        final captured = await BackupSnapshot.capture(db);
+        await db.update('categories', {'is_archived': 0});
+        await BackupSnapshot.parse(captured).restore(db);
+        expect((await db.query('categories')).single['is_archived'], 1);
+        expect((await db.query('expenses')).single['amount'], 6000);
+        final legacy = jsonDecode(captured) as Map<String, dynamic>;
+        (legacy['categories'][0] as Map).remove('is_archived');
+        await BackupSnapshot.parse(jsonEncode(legacy)).restore(db);
+        expect((await db.query('categories')).single['is_archived'], 0);
+      },
+    );
+
     test('rejects invalid JSON structure', () {
       expect(
         () => BackupSnapshot.parse('{"invalid": true}'),
         throwsA(isA<FormatException>()),
       );
       expect(
-        () => BackupSnapshot.parse(jsonEncode({
-          'format': 'wrong_format',
-          'version': 1,
-          'schemaVersion': 2,
-          'createdAt': 12345,
-          'expenses': [],
-          'categories': [],
-        })),
+        () => BackupSnapshot.parse(
+          jsonEncode({
+            'format': 'wrong_format',
+            'version': 1,
+            'schemaVersion': 2,
+            'createdAt': 12345,
+            'expenses': [],
+            'categories': [],
+          }),
+        ),
         throwsA(isA<FormatException>()),
       );
     });

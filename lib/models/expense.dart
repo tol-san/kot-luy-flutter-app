@@ -9,6 +9,7 @@ class ExpenseCategory {
     required this.color,
     required this.background,
     this.isCustom = false,
+    this.isArchived = false,
   });
 
   final String name;
@@ -17,6 +18,7 @@ class ExpenseCategory {
   final Color color;
   final Color background;
   final bool isCustom;
+  final bool isArchived;
 
   static const breakfast = ExpenseCategory(
     name: 'breakfast',
@@ -105,15 +107,15 @@ class ExpenseCategory {
       'coffee' => coffee,
       'other' => other,
       _ => ExpenseCategory(
-          name: name,
-          label: name.startsWith('custom_') ? name.substring(7) : name,
-          icon: Icons.local_offer_outlined,
-          color: autoColors[name.hashCode.abs() % autoColors.length],
-          background: autoBackground(
-            autoColors[name.hashCode.abs() % autoColors.length],
-          ),
-          isCustom: true,
+        name: name,
+        label: name.startsWith('custom_') ? name.substring(7) : name,
+        icon: Icons.local_offer_outlined,
+        color: autoColors[name.hashCode.abs() % autoColors.length],
+        background: autoBackground(
+          autoColors[name.hashCode.abs() % autoColors.length],
         ),
+        isCustom: true,
+      ),
     };
   }
 
@@ -241,4 +243,3 @@ String formatExpenseDateTime(DateTime date, DateTime now) {
   }
   return '$timeStr • ${displayDate(date)}';
 }
-

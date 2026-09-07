@@ -82,7 +82,7 @@ class CategoryListItem extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'លុបមុខចំណាយនេះ',
+            tooltip: 'លាក់ ឬលុបមុខចំណាយនេះ',
             icon: const Icon(
               Icons.delete_outline_rounded,
               color: Color(0xFFC26D6D),

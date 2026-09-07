@@ -73,7 +73,8 @@ class _ExpenseFormState extends State<ExpenseForm> {
             (c) => c.name == widget.expense!.category.name,
             orElse: () => widget.expense!.category,
           );
-        } else if (!_categories.any((c) => c == _category)) {
+        } else if (!_categories.any((c) => c == _category) &&
+            _category.name != widget.expense?.category.name) {
           _category = _categories.first;
         }
       });
@@ -91,7 +92,8 @@ class _ExpenseFormState extends State<ExpenseForm> {
         _categories = result.categories;
         if (result.selectedCategory != null) {
           _category = result.selectedCategory!;
-        } else if (!_categories.any((c) => c == _category)) {
+        } else if (!_categories.any((c) => c == _category) &&
+            _category.name != widget.expense?.category.name) {
           _category = _categories.first;
         }
       });
@@ -173,34 +175,40 @@ class _ExpenseFormState extends State<ExpenseForm> {
                           ),
                         ),
                         child: ListTile(
-                        key: Key('picker_category_${cat.name}'),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        leading: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: cat.color,
-                            shape: BoxShape.circle,
+                          key: Key('picker_category_${cat.name}'),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                        ),
-                        title: Text(
-                          cat.label,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: isSel ? FontWeight.w700 : FontWeight.w600,
-                            color: isSel ? cat.color : ink,
+                          leading: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: cat.color,
+                              shape: BoxShape.circle,
+                            ),
                           ),
+                          title: Text(
+                            cat.label,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: isSel
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                              color: isSel ? cat.color : ink,
+                            ),
+                          ),
+                          trailing: isSel
+                              ? Icon(
+                                  Icons.check_circle_rounded,
+                                  color: cat.color,
+                                  size: 20,
+                                )
+                              : null,
+                          onTap: () => Navigator.pop(ctx, cat),
                         ),
-                        trailing: isSel
-                            ? Icon(Icons.check_circle_rounded, color: cat.color, size: 20)
-                            : null,
-                        onTap: () => Navigator.pop(ctx, cat),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
                 ),
               ),
               Padding(
@@ -213,7 +221,11 @@ class _ExpenseFormState extends State<ExpenseForm> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  icon: const Icon(Icons.swap_vert_rounded, size: 18, color: green),
+                  icon: const Icon(
+                    Icons.swap_vert_rounded,
+                    size: 18,
+                    color: green,
+                  ),
                   label: const Text(
                     'រៀបចំ ឬ បន្ថែមមុខចំណាយថ្មី',
                     style: TextStyle(
@@ -307,10 +319,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
   Future<void> _pickTime() async {
     final pickedTime = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay(
-        hour: _date.hour,
-        minute: _date.minute,
-      ),
+      initialTime: TimeOfDay(hour: _date.hour, minute: _date.minute),
     );
     if (pickedTime != null && mounted) {
       _ticker?.cancel();
@@ -411,10 +420,9 @@ class _ExpenseFormState extends State<ExpenseForm> {
                       ),
                     ),
                   ),
-                  validator: (value) =>
-                      parseRielInput(value) <= 0
-                          ? 'សូមបញ្ចូលចំនួនប្រាក់លើសពី 0'
-                          : null,
+                  validator: (value) => parseRielInput(value) <= 0
+                      ? 'សូមបញ្ចូលចំនួនប្រាក់លើសពី 0'
+                      : null,
                 ),
                 const SizedBox(height: 10),
                 Wrap(
@@ -424,8 +432,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                     ...[500, 1000, 2000, 3000, 5000, 10000].map(
                       (v) => ActionChip(
                         key: Key('quick_amount_$v'),
-                        materialTapTargetSize:
-                            MaterialTapTargetSize.shrinkWrap,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
                         label: Text(
                           '+${riel(v)}',
@@ -515,8 +522,9 @@ class _ExpenseFormState extends State<ExpenseForm> {
                     final buttonWidth = (constraints.maxWidth - 16) / 3;
                     final top5 = _categories.take(5).toList();
                     final isCategoryInTop5 = top5.contains(_category);
-                    final moreButtonLabel =
-                        !isCategoryInTop5 ? _category.label : 'ច្រើនទៀត';
+                    final moreButtonLabel = !isCategoryInTop5
+                        ? _category.label
+                        : 'ច្រើនទៀត';
                     final isMoreSelected = !isCategoryInTop5;
                     final moreCategory = !isCategoryInTop5 ? _category : null;
 
@@ -560,9 +568,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                                           fontWeight: c == _category
                                               ? FontWeight.w700
                                               : FontWeight.w500,
-                                          color: c == _category
-                                              ? c.color
-                                              : ink,
+                                          color: c == _category ? c.color : ink,
                                         ),
                                       ),
                                     ),
@@ -578,7 +584,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                             child: Material(
                               color: isMoreSelected
                                   ? (moreCategory?.background ??
-                                      const Color(0xFFF0F2EB))
+                                        const Color(0xFFF0F2EB))
                                   : Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
@@ -616,7 +622,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                                                   : FontWeight.w500,
                                               color: isMoreSelected
                                                   ? (moreCategory?.color ??
-                                                      green)
+                                                        green)
                                                   : muted,
                                             ),
                                           ),
