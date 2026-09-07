@@ -725,29 +725,6 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEDF1E3),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.shield_outlined, size: 15, color: green),
-              SizedBox(width: 6),
-              Text(
-                'ឯកសារលើ Drive ត្រូវបានចាក់សោរសម្រាប់តែមើល (ការពារការកែប្រែ)',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: green,
-                ),
-              ),
-            ],
-          ),
-        ),
         const SizedBox(height: 12),
         if (_remoteBackups.isEmpty)
           Container(
