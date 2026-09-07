@@ -107,6 +107,17 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
     }
   }
 
+  void _selectCategory(ExpenseCategory category) {
+    if (_adding) return;
+    Navigator.pop(
+      context,
+      CategoryManagementResult(
+        categories: _categories,
+        selectedCategory: category,
+      ),
+    );
+  }
+
   Future<void> _addCategory(String name) async {
     final cleanName = name.trim();
     if (cleanName.isEmpty) return;
@@ -118,7 +129,9 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
       _highlightCategoryByName(cleanName);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('មុខចំណាយ «$cleanName» មានរួចហើយ មិនអាចបន្ថែមស្ទួនបានទេ'),
+          content: Text(
+            'មុខចំណាយ «$cleanName» មានរួចហើយ មិនអាចបន្ថែមស្ទួនបានទេ',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -146,10 +159,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
             ? e.message.toString()
             : 'មិនអាចបន្ថែមមុខចំណាយនេះបានទេ';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            behavior: SnackBarBehavior.floating,
-          ),
+          SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
         );
       }
     }
@@ -169,9 +179,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('លុបមុខចំណាយនេះ?'),
-        content: Text(
-          '«${category.label}» នឹងត្រូវបានលុបចេញពីបញ្ជីមុខចំណាយ។',
-        ),
+        content: Text('«${category.label}» នឹងត្រូវបានលុបចេញពីបញ្ជីមុខចំណាយ។'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -229,7 +237,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
             CategoryInputRow(
               onAdd: _addCategory,
               existingCategories: _categories,
-              onSelectExisting: (cat) => _highlightCategory(cat.name),
+              onSelectExisting: _selectCategory,
               isAdding: _adding,
             ),
             _loading ? _buildLoader() : _buildList(),
@@ -271,7 +279,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
               ),
               SizedBox(height: 2),
               Text(
-                'អូសសញ្ញា ☰ ដើម្បីប្តូរលំដាប់មុខក្រោយ',
+                'ចុចដើម្បីជ្រើសរើស • អូសសញ្ញា ☰ ដើម្បីប្តូរលំដាប់',
                 style: TextStyle(fontSize: 11, color: muted),
               ),
             ],
@@ -311,6 +319,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
         category: _categories[index],
         index: index,
         isHighlighted: _categories[index].name == _highlightedCategoryId,
+        onSelect: _adding ? null : () => _selectCategory(_categories[index]),
         onDelete: () => _deleteCategory(_categories[index]),
       ),
     ),

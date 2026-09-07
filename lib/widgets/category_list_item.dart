@@ -13,12 +13,14 @@ class CategoryListItem extends StatelessWidget {
     required this.category,
     required this.index,
     required this.onDelete,
+    this.onSelect,
     this.isHighlighted = false,
   });
 
   final ExpenseCategory category;
   final int index;
   final VoidCallback onDelete;
+  final VoidCallback? onSelect;
   final bool isHighlighted;
 
   @override
@@ -43,29 +45,39 @@ class CategoryListItem extends StatelessWidget {
             index: index,
             child: const Padding(
               padding: EdgeInsets.only(right: 12),
-              child: Icon(
-                Icons.drag_handle_rounded,
-                color: muted,
-                size: 20,
-              ),
+              child: Icon(Icons.drag_handle_rounded, color: muted, size: 20),
             ),
           ),
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: category.color,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              category.label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: ink,
+            child: InkWell(
+              key: Key('select_category_${category.name}'),
+              onTap: onSelect,
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                height: double.infinity,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: category.color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        category.label,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: ink,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
