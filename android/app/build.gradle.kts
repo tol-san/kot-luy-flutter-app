@@ -37,6 +37,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
 }
 
 kotlin {
@@ -50,6 +51,8 @@ flutter {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
     implementation("com.google.android.gms:play-services-auth:22.0.0")
     implementation("androidx.work:work-runtime:2.11.2")
 }

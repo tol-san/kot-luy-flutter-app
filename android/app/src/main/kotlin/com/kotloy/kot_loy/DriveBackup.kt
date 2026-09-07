@@ -214,17 +214,22 @@ class DriveBackup(private val context: Context) {
         return result
     }
 
-    private fun snapshot(): JSONObject {
+    internal fun snapshot(): JSONObject {
         val path = prefs.getString("path", null) ?: throw BackupFailure("database")
-        SQLiteDatabase.openDatabase(path, null, SQLiteDatabase.OPEN_READONLY).use { db ->
-            db.execSQL("BEGIN DEFERRED TRANSACTION")
+        // Older Android releases reinterpret raw BEGIN as an exclusive
+        // transaction, which fails on OPEN_READONLY. Use the existing internal
+        // database with a supported transaction API; never create a missing DB.
+        SQLiteDatabase.openDatabase(path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            db.beginTransactionNonExclusive()
             try {
-                if (db.version != 2) throw BackupFailure("database")
+                if (db.version !in 2..3) throw BackupFailure("database")
+                // Local v3 only repairs category data. The JSON interchange
+                // schema remains v2 so existing backups/readers stay compatible.
                 return JSONObject().put("format", FORMAT).put("version", 1).put("schemaVersion", 2)
                     .put("createdAt", System.currentTimeMillis())
                     .put("expenses", rows(db, "expenses", "id ASC"))
                     .put("categories", rows(db, "categories", "sort_order ASC, id ASC"))
-            } finally { db.execSQL("ROLLBACK") }
+            } finally { db.endTransaction() }
         }
     }
 
