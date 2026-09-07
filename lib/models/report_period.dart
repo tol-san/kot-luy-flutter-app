@@ -127,6 +127,6 @@ class ReportPeriodConfig {
       ReportPeriodType.semester => 'semester${semester}_$year',
       ReportPeriodType.year => 'year_$year',
     };
-    return 'kot_loy_${lvl}_$sub.pdf';
+    return 'kot_luy_${lvl}_$sub.pdf';
   }
 }

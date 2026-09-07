@@ -8,6 +8,8 @@ import '../models/report_period.dart';
 import '../pdf/expense_pdf_service.dart';
 import '../pdf/pdf_downloader.dart';
 
+enum _PdfAction { preview, download }
+
 class PdfExportSheet extends StatefulWidget {
   const PdfExportSheet({super.key, required this.repository});
   final ExpenseRepository repository;
@@ -37,7 +39,8 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
 
   List<Expense> _allExpenses = [];
   bool _loading = true;
-  bool _generating = false;
+  _PdfAction? _activeAction;
+  bool get _generating => _activeAction != null;
 
   static const _level = ReportDetailLevel.detailed;
   ReportPeriodType _periodType = ReportPeriodType.month;
@@ -57,8 +60,9 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
     _selectedQuarter = ((now.month - 1) ~/ 3) + 1;
     _selectedSemester = ((now.month - 1) ~/ 6) + 1;
     final startOfToday = DateTime(now.year, now.month, now.day);
-    _selectedWeekStart =
-        startOfToday.subtract(Duration(days: startOfToday.weekday - 1));
+    _selectedWeekStart = startOfToday.subtract(
+      Duration(days: startOfToday.weekday - 1),
+    );
     _loadExpenses();
   }
 
@@ -89,7 +93,8 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
       _currentConfig.filterExpenses(_allExpenses);
 
   Future<void> _previewAndPrint() async {
-    setState(() => _generating = true);
+    if (_generating) return;
+    setState(() => _activeAction = _PdfAction.preview);
     try {
       final config = _currentConfig;
       final pdfBytes = await ExpensePdfService.generateReport(
@@ -105,17 +110,18 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('មិនអាចបង្កើត PDF បានទេ៖ $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('មិនអាចបង្កើត PDF បានទេ៖ $e')));
       }
     } finally {
-      if (mounted) setState(() => _generating = false);
+      if (mounted) setState(() => _activeAction = null);
     }
   }
 
   Future<void> _downloadOrShare() async {
-    setState(() => _generating = true);
+    if (_generating) return;
+    setState(() => _activeAction = _PdfAction.download);
     try {
       final config = _currentConfig;
       final filename = config.filename(_level);
@@ -138,9 +144,12 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
           messenger.showSnackBar(
             SnackBar(
               behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 5),
-              content: Text(
-                'បានទាញយកឯកសារ PDF ទៅកាន់ ${result.displayPath}',
+              duration: const Duration(seconds: 3),
+              persist: false,
+              content: const Text(
+                'បានទាញយក PDF',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               action: SnackBarAction(
                 label: 'បើក',
@@ -162,7 +171,7 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
         );
       }
     } finally {
-      if (mounted) setState(() => _generating = false);
+      if (mounted) setState(() => _activeAction = null);
     }
   }
 
@@ -175,9 +184,7 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * 0.88,
       ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       decoration: const BoxDecoration(
         color: paper,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -312,34 +319,58 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
 
   Widget _buildSubPeriodSelector() {
     return AnimatedSize(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
+      duration: _transitionDuration,
+      curve: Curves.easeInOutCubic,
       alignment: Alignment.topCenter,
-      child: KeyedSubtree(
-        key: ValueKey(_periodType),
-        child: () {
-          switch (_periodType) {
-            case ReportPeriodType.week:
-              return _buildWeekSelector();
-            case ReportPeriodType.month:
-              return _buildMonthSelector();
-            case ReportPeriodType.quarter:
-              return _buildQuarterSelector();
-            case ReportPeriodType.semester:
-              return _buildSemesterSelector();
-            case ReportPeriodType.year:
-              return _buildYearSelector();
-          }
-        }(),
+      child: AnimatedSwitcher(
+        duration: _transitionDuration,
+        switchInCurve: Curves.easeInOutCubic,
+        switchOutCurve: Curves.easeInOutCubic,
+        // Size to the new controls while outgoing controls fade away.
+        layoutBuilder: (currentChild, previousChildren) => Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            for (final child in previousChildren)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(child: ExcludeSemantics(child: child)),
+              ),
+            ?currentChild,
+          ],
+        ),
+        child: KeyedSubtree(
+          key: ValueKey(_periodType),
+          child: () {
+            switch (_periodType) {
+              case ReportPeriodType.week:
+                return _buildWeekSelector();
+              case ReportPeriodType.month:
+                return _buildMonthSelector();
+              case ReportPeriodType.quarter:
+                return _buildQuarterSelector();
+              case ReportPeriodType.semester:
+                return _buildSemesterSelector();
+              case ReportPeriodType.year:
+                return _buildYearSelector();
+            }
+          }(),
+        ),
       ),
     );
   }
 
+  Duration get _transitionDuration => MediaQuery.disableAnimationsOf(context)
+      ? Duration.zero
+      : const Duration(milliseconds: 240);
+
   Widget _buildWeekSelector() {
     final now = clock.now();
     final startOfToday = DateTime(now.year, now.month, now.day);
-    final thisWeekStart =
-        startOfToday.subtract(Duration(days: startOfToday.weekday - 1));
+    final thisWeekStart = startOfToday.subtract(
+      Duration(days: startOfToday.weekday - 1),
+    );
     final lastWeekStart = thisWeekStart.subtract(const Duration(days: 7));
 
     final isThisWeek = _selectedWeekStart == thisWeekStart;
@@ -351,7 +382,9 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
           child: OutlinedButton(
             key: const Key('pdf_week_this'),
             style: OutlinedButton.styleFrom(
-              backgroundColor: isThisWeek ? const Color(0xFFEAF0E1) : Colors.white,
+              backgroundColor: isThisWeek
+                  ? const Color(0xFFEAF0E1)
+                  : Colors.white,
               side: BorderSide(color: isThisWeek ? green : line),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -372,7 +405,9 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
           child: OutlinedButton(
             key: const Key('pdf_week_last'),
             style: OutlinedButton.styleFrom(
-              backgroundColor: isLastWeek ? const Color(0xFFEAF0E1) : Colors.white,
+              backgroundColor: isLastWeek
+                  ? const Color(0xFFEAF0E1)
+                  : Colors.white,
               side: BorderSide(color: isLastWeek ? green : line),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -406,9 +441,7 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                 children: [
                   for (int col = 0; col < 4; col++) ...[
                     if (col > 0) const SizedBox(width: 6),
-                    Expanded(
-                      child: _buildMonthButton(row * 4 + col + 1),
-                    ),
+                    Expanded(child: _buildMonthButton(row * 4 + col + 1)),
                   ],
                 ],
               ),
@@ -426,7 +459,9 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
       key: Key('pdf_month_$monthNum'),
       borderRadius: BorderRadius.circular(10),
       onTap: () => setState(() => _selectedMonth = monthNum),
-      child: Container(
+      child: AnimatedContainer(
+        duration: _transitionDuration,
+        curve: Curves.easeInOutCubic,
         padding: const EdgeInsets.symmetric(vertical: 8),
         alignment: Alignment.center,
         decoration: BoxDecoration(
@@ -469,7 +504,9 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
               key: Key('pdf_quarter_${q.$1}'),
               borderRadius: BorderRadius.circular(12),
               onTap: () => setState(() => _selectedQuarter = q.$1),
-              child: Container(
+              child: AnimatedContainer(
+                duration: _transitionDuration,
+                curve: Curves.easeInOutCubic,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 10,
@@ -493,8 +530,9 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                       q.$2,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         color: isSelected ? green : ink,
                       ),
                     ),
@@ -526,7 +564,9 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
               key: Key('pdf_semester_${s.$1}'),
               borderRadius: BorderRadius.circular(12),
               onTap: () => setState(() => _selectedSemester = s.$1),
-              child: Container(
+              child: AnimatedContainer(
+                duration: _transitionDuration,
+                curve: Curves.easeInOutCubic,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 10,
@@ -550,8 +590,9 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                       s.$2,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         color: isSelected ? green : ink,
                       ),
                     ),
@@ -574,7 +615,10 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
     final years = [currentYear, currentYear - 1, currentYear - 2];
     return Row(
       children: [
-        const Text('ជ្រើសរើសឆ្នាំ៖ ', style: TextStyle(fontSize: 12, color: muted)),
+        const Text(
+          'ជ្រើសរើសឆ្នាំ៖ ',
+          style: TextStyle(fontSize: 12, color: muted),
+        ),
         const SizedBox(width: 8),
         ...years.map((y) {
           final isSelected = _selectedYear == y;
@@ -617,8 +661,6 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.insights_rounded, color: green, size: 22),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -660,10 +702,21 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              icon: const Icon(Icons.print_outlined, size: 18, color: green),
-              label: const Text(
-                'មើល / បោះពុម្ព',
-                style: TextStyle(
+              icon: _activeAction == _PdfAction.preview
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: green,
+                      ),
+                    )
+                  : const Icon(Icons.print_outlined, size: 18, color: green),
+              label: Text(
+                _activeAction == _PdfAction.preview
+                    ? 'កំពុងរៀបចំ…'
+                    : 'មើល / បោះពុម្ព',
+                style: const TextStyle(
                   color: green,
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -683,7 +736,7 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              icon: _generating
+              icon: _activeAction == _PdfAction.download
                   ? const SizedBox(
                       width: 16,
                       height: 16,
@@ -694,7 +747,9 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                     )
                   : const Icon(Icons.download_rounded, size: 18),
               label: Text(
-                _generating ? 'កំពុងបង្កើត...' : 'ទាញយក PDF',
+                _activeAction == _PdfAction.download
+                    ? 'កំពុងទាញយក…'
+                    : 'ទាញយក PDF',
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,

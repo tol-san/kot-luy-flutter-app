@@ -190,19 +190,34 @@ void main() {
     // Verify saveOverride was called with pdf filename
     expect(savedFilename, isNotNull);
     expect(savedFilename!.endsWith('.pdf'), isTrue);
-    expect(savedFilename, startsWith('kot_loy_detailed_'));
+    expect(savedFilename, startsWith('kot_luy_detailed_'));
 
     // Verify SnackBar appears with download message and 'បើក' button
     expect(
-      find.text('បានទាញយកឯកសារ PDF ទៅកាន់ Downloads/$savedFilename'),
+      find.text('បានទាញយក PDF'),
       findsOneWidget,
     );
     expect(find.text('បើក'), findsOneWidget);
+    final downloadMessage = tester.widget<Text>(
+      find.text('បានទាញយក PDF'),
+    );
+    expect(downloadMessage.maxLines, 1);
+    expect(downloadMessage.overflow, TextOverflow.ellipsis);
+    final notification = tester.widget<SnackBar>(find.byType(SnackBar));
+    final messenger = ScaffoldMessenger.of(tester.element(find.byType(SnackBar)));
 
     // Tap 'បើក'
     await tester.tap(find.text('បើក'));
     await tester.pumpAndSettle();
 
     expect(openedTarget, equals('content://downloads/$savedFilename'));
+
+    // The same notification also dismisses automatically without tapping Open.
+    messenger.showSnackBar(notification);
+    await tester.pumpAndSettle();
+    expect(find.text('បានទាញយក PDF'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+    expect(find.byType(SnackBar), findsNothing);
   });
 }

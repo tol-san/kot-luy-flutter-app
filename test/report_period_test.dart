@@ -17,11 +17,11 @@ void main() {
       expect(config.khmerPeriodTitle, contains('សប្ដាហ៍'));
       expect(
         config.filename(ReportDetailLevel.summary),
-        startsWith('kot_loy_summary_week_'),
+        startsWith('kot_luy_summary_week_'),
       );
       expect(
         config.filename(ReportDetailLevel.detailed),
-        startsWith('kot_loy_detailed_week_'),
+        startsWith('kot_luy_detailed_week_'),
       );
     });
 
@@ -37,7 +37,7 @@ void main() {
       expect(config.khmerPeriodTitle, 'ខែ កុម្ភៈ ឆ្នាំ 2026');
       expect(
         config.filename(ReportDetailLevel.summary),
-        'kot_loy_summary_month_2026_2.pdf',
+        'kot_luy_summary_month_2026_2.pdf',
       );
     });
 
@@ -52,7 +52,7 @@ void main() {
       expect(q1.khmerPeriodTitle, 'ត្រីមាសទី 1 ឆ្នាំ 2026');
       expect(
         q1.filename(ReportDetailLevel.summary),
-        'kot_loy_summary_quarter1_2026.pdf',
+        'kot_luy_summary_quarter1_2026.pdf',
       );
 
       final q4 = ReportPeriodConfig(
@@ -65,7 +65,7 @@ void main() {
       expect(q4.khmerPeriodTitle, 'ត្រីមាសទី 4 ឆ្នាំ 2026');
       expect(
         q4.filename(ReportDetailLevel.detailed),
-        'kot_loy_detailed_quarter4_2026.pdf',
+        'kot_luy_detailed_quarter4_2026.pdf',
       );
     });
 
@@ -80,7 +80,7 @@ void main() {
       expect(s1.khmerPeriodTitle, 'ឆមាសទី 1 ឆ្នាំ 2026');
       expect(
         s1.filename(ReportDetailLevel.summary),
-        'kot_loy_summary_semester1_2026.pdf',
+        'kot_luy_summary_semester1_2026.pdf',
       );
 
       final s2 = ReportPeriodConfig(
@@ -93,7 +93,7 @@ void main() {
       expect(s2.khmerPeriodTitle, 'ឆមាសទី 2 ឆ្នាំ 2026');
       expect(
         s2.filename(ReportDetailLevel.detailed),
-        'kot_loy_detailed_semester2_2026.pdf',
+        'kot_luy_detailed_semester2_2026.pdf',
       );
     });
 
@@ -108,7 +108,7 @@ void main() {
       expect(config.khmerPeriodTitle, 'ឆ្នាំ 2026');
       expect(
         config.filename(ReportDetailLevel.detailed),
-        'kot_loy_detailed_year_2026.pdf',
+        'kot_luy_detailed_year_2026.pdf',
       );
     });
 
