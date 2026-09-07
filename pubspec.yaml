@@ -1,7 +1,7 @@
 name: kot_luy
 description: A gentle, offline Khmer expense companion with SQLite storage.
 publish_to: 'none'
-version: 0.1.0+4004
+version: 0.1.1+4005
 environment:
   sdk: ^3.13.0
 dependencies:
