@@ -39,7 +39,7 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
   bool _loading = true;
   bool _generating = false;
 
-  ReportDetailLevel _level = ReportDetailLevel.summary;
+  static const _level = ReportDetailLevel.detailed;
   ReportPeriodType _periodType = ReportPeriodType.month;
 
   late int _selectedYear;
@@ -200,11 +200,7 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionTitle('១. ទម្រង់របាយការណ៍'),
-                    const SizedBox(height: 8),
-                    _buildLevelSelector(),
-                    const SizedBox(height: 18),
-                    _buildSectionTitle('២. កាលកំណត់'),
+                    _buildSectionTitle('កាលកំណត់'),
                     const SizedBox(height: 8),
                     _buildPeriodTypeSelector(),
                     const SizedBox(height: 14),
@@ -255,7 +251,7 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
               ),
               SizedBox(height: 2),
               Text(
-                'ជ្រើសរើសទម្រង់ និងកាលកំណត់ដែលអ្នកចង់បាន',
+                'ជ្រើសរើសកាលកំណត់សម្រាប់របាយការណ៍លម្អិត',
                 style: TextStyle(fontSize: 11, color: muted),
               ),
             ],
@@ -278,63 +274,6 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
       color: ink,
     ),
   );
-
-  Widget _buildLevelSelector() {
-    return Row(
-      children: ReportDetailLevel.values.map((lvl) {
-        final isSelected = _level == lvl;
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(
-              right: lvl == ReportDetailLevel.summary ? 8 : 0,
-            ),
-            child: Material(
-              color: isSelected ? const Color(0xFFEAF0E1) : Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              child: InkWell(
-                key: Key('pdf_level_${lvl.name}'),
-                borderRadius: BorderRadius.circular(14),
-                onTap: () => setState(() => _level = lvl),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isSelected ? green : line,
-                      width: isSelected ? 1.6 : 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        lvl.label,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight:
-                              isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? green : ink,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        lvl == ReportDetailLevel.summary
-                            ? 'សង្ខេបតាមមុខចំណាយ'
-                            : 'រាយគ្រប់ប្រតិបត្តិការ',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isSelected ? green : muted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
 
   Widget _buildPeriodTypeSelector() {
     return SingleChildScrollView(

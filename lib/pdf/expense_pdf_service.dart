@@ -596,7 +596,6 @@ class ExpensePdfService {
         1: const pw.FlexColumnWidth(2.6),
         2: const pw.FlexColumnWidth(2.4),
         3: const pw.FlexColumnWidth(2),
-        4: const pw.FlexColumnWidth(3),
       },
       children: [
         pw.TableRow(
@@ -607,7 +606,6 @@ class ExpensePdfService {
             cell('កាលបរិច្ឆេទ', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.start),
             cell('មុខចំណាយ', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.start),
             cell('ចំនួនទឹកប្រាក់', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.end),
-            cell('កំណត់ចំណាំ', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.start),
           ],
         ),
         ...expenses.asMap().entries.map((entry) {
@@ -622,7 +620,6 @@ class ExpensePdfService {
               cell(dateStr, font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.start),
               cell(e.category.label, font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.start),
               cell(riel(e.amount), font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.end),
-              cell(e.note.isEmpty ? '-' : e.note, font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.start),
             ],
           );
         }),

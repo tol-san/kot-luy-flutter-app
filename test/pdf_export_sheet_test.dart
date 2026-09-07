@@ -66,8 +66,9 @@ void main() {
 
     // Verify Title and Formats
     expect(find.text('ទាញយករបាយការណ៍ PDF'), findsOneWidget);
-    expect(find.text('សង្ខេប'), findsOneWidget);
-    expect(find.text('លម្អិត'), findsOneWidget);
+    expect(find.text('១. ទម្រង់របាយការណ៍'), findsNothing);
+    expect(find.text('សង្ខេប'), findsNothing);
+    expect(find.byKey(const Key('pdf_level_detailed')), findsNothing);
 
     // Verify Periods are present with full labels
     expect(find.text('ប្រចាំសប្ដាហ៍'), findsOneWidget);
@@ -189,6 +190,7 @@ void main() {
     // Verify saveOverride was called with pdf filename
     expect(savedFilename, isNotNull);
     expect(savedFilename!.endsWith('.pdf'), isTrue);
+    expect(savedFilename, startsWith('kot_loy_detailed_'));
 
     // Verify SnackBar appears with download message and 'បើក' button
     expect(
