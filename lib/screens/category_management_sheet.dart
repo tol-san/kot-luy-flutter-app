@@ -196,8 +196,22 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
       ),
     );
     if (confirmed == true) {
-      await widget.repository.deleteCategory(category.name);
-      await _loadCategories();
+      try {
+        await widget.repository.deleteCategory(category.name);
+        await _loadCategories();
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is StateError
+                  ? error.message
+                  : 'មិនអាចលុបមុខចំណាយនេះបានទេ សូមព្យាយាមម្ដងទៀត',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 

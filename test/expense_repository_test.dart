@@ -242,16 +242,24 @@ void main() {
       expect(expenses.single.category.name, customCat.name);
       expect(expenses.single.category.label, 'ថ្លៃផ្ទះ');
 
-      // 5. Delete category -> expense reassigned to first remaining category
-      await repo.deleteCategory(customCat.name);
+      // 5. Used categories cannot be deleted or their expenses reassigned.
+      await expectLater(repo.deleteCategory(customCat.name), throwsStateError);
       final catsAfterDelete = await repo.getCategories();
-      expect(catsAfterDelete.length, 5);
-      expect(catsAfterDelete.any((c) => c.name == customCat.name), isFalse);
+      expect(catsAfterDelete.length, 6);
+      expect(catsAfterDelete.any((c) => c.name == customCat.name), isTrue);
 
       final expensesAfterDelete = await repo.all();
       expect(
         expensesAfterDelete.single.category.name,
-        catsAfterDelete.first.name,
+        customCat.name,
+      );
+
+      // Once no expense uses it, the category can be deleted.
+      await repo.delete(expensesAfterDelete.single.id!);
+      await repo.deleteCategory(customCat.name);
+      expect(
+        (await repo.getCategories()).any((c) => c.name == customCat.name),
+        isFalse,
       );
 
       // 6. Any category (including defaults like coffee) can be deleted

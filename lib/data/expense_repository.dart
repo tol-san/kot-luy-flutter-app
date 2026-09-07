@@ -207,6 +207,18 @@ class ExpenseRepository {
 
   Future<void> deleteCategory(String id) async {
     await database.transaction((txn) async {
+      final usage = await txn.query(
+        'expenses',
+        columns: ['id'],
+        where: 'category = ?',
+        whereArgs: [id],
+        limit: 1,
+      );
+      if (usage.isNotEmpty) {
+        throw StateError(
+          'មិនអាចលុបមុខចំណាយនេះបានទេ ព្រោះនៅមានកំណត់ត្រាចំណាយប្រើវា',
+        );
+      }
       final remaining = await txn.query(
         'categories',
         where: 'id != ?',
@@ -214,13 +226,9 @@ class ExpenseRepository {
         orderBy: 'sort_order ASC',
         limit: 1,
       );
-      if (remaining.isNotEmpty) {
-        final fallbackId = remaining.first['id'] as String;
-        await txn.update(
-          'expenses',
-          {'category': fallbackId},
-          where: 'category = ?',
-          whereArgs: [id],
+      if (remaining.isEmpty) {
+        throw StateError(
+          'មិនអាចលុបបានទេ ត្រូវមានមុខចំណាយយ៉ាងហោចណាស់មួយ',
         );
       }
       await txn.delete('categories', where: 'id = ?', whereArgs: [id]);
