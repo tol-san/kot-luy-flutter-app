@@ -11,7 +11,7 @@ class FakeExpenseRepository extends Fake implements ExpenseRepository {
   final List<Expense> _expenses;
 
   @override
-  Future<List<Expense>> all() async => _expenses;
+  Future<List<Expense>> all({List<ExpenseCategory>? categories}) async => _expenses;
 
   @override
   Future<List<ExpenseCategory>> getCategories() async => ExpenseCategory.values;

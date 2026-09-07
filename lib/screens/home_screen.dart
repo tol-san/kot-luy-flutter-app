@@ -53,8 +53,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _load() async {
     try {
-      final expenses = await widget.repository.all();
       final categories = await widget.repository.getCategories();
+      final expenses = await widget.repository.all(categories: categories);
       if (mounted) {
         setState(() {
           _expenses = expenses;

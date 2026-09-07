@@ -24,7 +24,7 @@ class ExpenseRepository {
     final db = await dbFactory.openDatabase(
       location,
       options: OpenDatabaseOptions(
-        version: 2,
+        version: 3,
         onCreate: (db, version) async {
           await db.execute('''CREATE TABLE expenses (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,59 +41,58 @@ class ExpenseRepository {
           if (oldVersion < 2) {
             await _createCategoriesTable(db);
           }
+          if (oldVersion < 3) {
+            // Upgrade callbacks already run in a transaction. Repair legacy
+            // categories once, rather than scanning expenses on every launch.
+            await _removeLegacyCategory(db);
+            await _deduplicateCategories(db);
+          }
         },
       ),
     );
-    // Purge deprecated 'other' if present and reassign any existing expenses
-    try {
-      await db.transaction((txn) async {
-        final remaining = await txn.query(
-          'categories',
-          where: "id != 'other'",
-          orderBy: 'sort_order ASC',
-          limit: 1,
-        );
-        if (remaining.isNotEmpty) {
-          final fallbackId = remaining.first['id'] as String;
-          await txn.update(
-            'expenses',
-            {'category': fallbackId},
-            where: "category = 'other'",
-          );
-        }
-        await txn.delete('categories', where: "id = 'other'");
-      });
-    } catch (_) {}
-    await _deduplicateCategories(db);
     final repo = ExpenseRepository(db);
     unawaited(DriveBackup.dataChanged(db.path));
     return repo;
   }
 
+  static Future<void> _removeLegacyCategory(DatabaseExecutor db) async {
+    final remaining = await db.query(
+      'categories',
+      where: "id != 'other'",
+      orderBy: 'sort_order ASC',
+      limit: 1,
+    );
+    if (remaining.isNotEmpty) {
+      final fallbackId = remaining.first['id'] as String;
+      await db.update('expenses', {
+        'category': fallbackId,
+      }, where: "category = 'other'");
+    }
+    await db.delete('categories', where: "id = 'other'");
+  }
+
   static Future<void> _deduplicateCategories(DatabaseExecutor db) async {
-    try {
-      final rows = await db.query(
-        'categories',
-        orderBy: 'is_custom ASC, sort_order ASC',
-      );
-      final seen = <String, String>{}; // normalized label -> primary id
-      for (final row in rows) {
-        final id = row['id'] as String;
-        final label = (row['label'] as String).trim().toLowerCase();
-        if (seen.containsKey(label)) {
-          final primaryId = seen[label]!;
-          await db.update(
-            'expenses',
-            {'category': primaryId},
-            where: 'category = ?',
-            whereArgs: [id],
-          );
-          await db.delete('categories', where: 'id = ?', whereArgs: [id]);
-        } else {
-          seen[label] = id;
-        }
+    final rows = await db.query(
+      'categories',
+      orderBy: 'is_custom ASC, sort_order ASC',
+    );
+    final seen = <String, String>{}; // normalized label -> primary id
+    for (final row in rows) {
+      final id = row['id'] as String;
+      final label = (row['label'] as String).trim().toLowerCase();
+      if (seen.containsKey(label)) {
+        final primaryId = seen[label]!;
+        await db.update(
+          'expenses',
+          {'category': primaryId},
+          where: 'category = ?',
+          whereArgs: [id],
+        );
+        await db.delete('categories', where: 'id = ?', whereArgs: [id]);
+      } else {
+        seen[label] = id;
       }
-    } catch (_) {}
+    }
   }
 
   static Future<void> _createCategoriesTable(DatabaseExecutor db) async {
@@ -143,7 +142,7 @@ class ExpenseRepository {
       }
     }
     if (hasDuplicates) {
-      await _deduplicateCategories(database);
+      await database.transaction(_deduplicateCategories);
       return getCategories();
     }
     return rows.map((r) {
@@ -182,9 +181,8 @@ class ExpenseRepository {
       throw ArgumentError('មុខចំណាយនេះមានរួចហើយ');
     }
     final customCount = current.where((c) => c.isCustom).length;
-    final color =
-        ExpenseCategory.autoColors[(customCount + 5) %
-            ExpenseCategory.autoColors.length];
+    final color = ExpenseCategory
+        .autoColors[(customCount + 5) % ExpenseCategory.autoColors.length];
     final id = 'custom_${DateTime.now().millisecondsSinceEpoch}';
     final nextOrder = current.length;
 
@@ -246,11 +244,15 @@ class ExpenseRepository {
     unawaited(DriveBackup.dataChanged(database.path));
   }
 
-  Future<List<Expense>> all() async {
-    final categories = await getCategories();
-    final rows = await database.query('expenses', orderBy: 'date DESC, id DESC');
-    return rows.map((r) => Expense.fromMap(r, categories)).toList();
+  Future<List<Expense>> all({List<ExpenseCategory>? categories}) async {
+    final resolvedCategories = categories ?? await getCategories();
+    final rows = await database.query(
+      'expenses',
+      orderBy: 'date DESC, id DESC',
+    );
+    return rows.map((r) => Expense.fromMap(r, resolvedCategories)).toList();
   }
+
   Future<void> save(Expense expense) async {
     if (expense.title.trim().isEmpty ||
         expense.amount <= 0 ||

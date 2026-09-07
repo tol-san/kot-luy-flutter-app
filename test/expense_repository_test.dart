@@ -8,6 +8,78 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 void main() {
   sqfliteFfiInit();
   test(
+    'legacy category repair runs once and reopening does no cleanup writes',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'kot_luy_upgrade_',
+      );
+      final path = '${directory.path}/expenses.db';
+      var repo = await ExpenseRepository.open(
+        factory: databaseFactoryFfi,
+        path: path,
+      );
+      try {
+        // Reproduce an installed v2 database with legacy and duplicate categories.
+        await repo.database.setVersion(2);
+        for (final id in ['other', 'duplicate']) {
+          await repo.database.insert('categories', {
+            'id': id,
+            'label': id == 'other'
+                ? 'Other'
+                : '  ${ExpenseCategory.lunch.label}  ',
+            'color_value': 0xFF123456,
+            'sort_order': 99,
+            'is_custom': 1,
+          });
+          await repo.database.insert('expenses', {
+            'title': id,
+            'amount': 12500,
+            'category': id,
+            'date': DateTime(2026, 9, 6).millisecondsSinceEpoch,
+            'note': 'Preserve this note',
+          });
+        }
+        await repo.close();
+        repo = await ExpenseRepository.open(
+          factory: databaseFactoryFfi,
+          path: path,
+        );
+        expect(await repo.database.getVersion(), 3);
+        final expenses = await repo.all();
+        expect(expenses.length, 2);
+        expect(
+          expenses.firstWhere((e) => e.title == 'other').category.name,
+          'breakfast',
+        );
+        expect(
+          expenses.firstWhere((e) => e.title == 'duplicate').category.name,
+          'lunch',
+        );
+        expect(
+          expenses.every(
+            (e) => e.amount == 12500 && e.note == 'Preserve this note',
+          ),
+          isTrue,
+        );
+        expect((await repo.getCategories()).length, 5);
+
+        // Read-only query mode makes any repeat of startup cleanup fail,
+        // including UPDATE/DELETE statements matching no rows.
+        await repo.close();
+        final connection = await databaseFactoryFfi.openDatabase(path);
+        await connection.execute('PRAGMA query_only = ON');
+        repo = await ExpenseRepository.open(
+          factory: databaseFactoryFfi,
+          path: path,
+        );
+        expect((await repo.all()).length, 2);
+      } finally {
+        await repo.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+  test(
     'SQLite persists Khmer records, exact riel amounts, edits and deletes',
     () async {
       final directory = await Directory.systemTemp.createTemp('kot_luy_test_');
@@ -111,119 +183,111 @@ void main() {
     },
   );
 
-  test(
-    'categories seed defaults, create custom with auto color, reorder and delete',
-    () async {
-      final directory = await Directory.systemTemp.createTemp('kot_luy_cat_test_');
-      final path = '${directory.path}/expenses.db';
-      var repo = await ExpenseRepository.open(
+  test('categories seed defaults, create custom with auto color, reorder and delete', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'kot_luy_cat_test_',
+    );
+    final path = '${directory.path}/expenses.db';
+    var repo = await ExpenseRepository.open(
+      factory: databaseFactoryFfi,
+      path: path,
+    );
+    try {
+      // 1. Initial seed check (5 default categories)
+      final initialCats = await repo.getCategories();
+      expect(initialCats.length, 5);
+      expect(initialCats.map((c) => c.name).toList(), [
+        'breakfast',
+        'lunch',
+        'dinner',
+        'fuel',
+        'coffee',
+      ]);
+
+      // 2. Add custom category (only label provided, color is auto)
+      final customCat = await repo.addCategory('ថ្លៃផ្ទះ');
+      expect(customCat.label, 'ថ្លៃផ្ទះ');
+      expect(customCat.isCustom, isTrue);
+      expect(customCat.color, isNotNull);
+
+      final updatedCats = await repo.getCategories();
+      expect(updatedCats.length, 6);
+      expect(updatedCats.last.label, 'ថ្លៃផ្ទះ');
+
+      // 3. Reorder categories (move custom to first)
+      final newOrder = [customCat.name, ...initialCats.map((c) => c.name)];
+      await repo.reorderCategories(newOrder);
+
+      // Reopen database to verify persistence of reordering
+      await repo.close();
+      repo = await ExpenseRepository.open(
         factory: databaseFactoryFfi,
         path: path,
       );
-      try {
-        // 1. Initial seed check (5 default categories)
-        final initialCats = await repo.getCategories();
-        expect(initialCats.length, 5);
-        expect(initialCats.map((c) => c.name).toList(), [
-          'breakfast',
-          'lunch',
-          'dinner',
-          'fuel',
-          'coffee',
-        ]);
 
-        // 2. Add custom category (only label provided, color is auto)
-        final customCat = await repo.addCategory('ថ្លៃផ្ទះ');
-        expect(customCat.label, 'ថ្លៃផ្ទះ');
-        expect(customCat.isCustom, isTrue);
-        expect(customCat.color, isNotNull);
+      final reordered = await repo.getCategories();
+      expect(reordered.first.name, customCat.name);
+      expect(reordered.first.label, 'ថ្លៃផ្ទះ');
 
-        final updatedCats = await repo.getCategories();
-        expect(updatedCats.length, 6);
-        expect(updatedCats.last.label, 'ថ្លៃផ្ទះ');
+      // 4. Save expense with custom category
+      await repo.save(
+        Expense(
+          title: 'បង់ថ្លៃផ្ទះប្រចាំខែ',
+          amount: 200000,
+          category: customCat,
+          date: DateTime(2026, 9, 6),
+        ),
+      );
+      final expenses = await repo.all();
+      expect(expenses.single.category.name, customCat.name);
+      expect(expenses.single.category.label, 'ថ្លៃផ្ទះ');
 
-        // 3. Reorder categories (move custom to first)
-        final newOrder = [
-          customCat.name,
-          ...initialCats.map((c) => c.name),
-        ];
-        await repo.reorderCategories(newOrder);
+      // 5. Delete category -> expense reassigned to first remaining category
+      await repo.deleteCategory(customCat.name);
+      final catsAfterDelete = await repo.getCategories();
+      expect(catsAfterDelete.length, 5);
+      expect(catsAfterDelete.any((c) => c.name == customCat.name), isFalse);
 
-        // Reopen database to verify persistence of reordering
-        await repo.close();
-        repo = await ExpenseRepository.open(
-          factory: databaseFactoryFfi,
-          path: path,
-        );
+      final expensesAfterDelete = await repo.all();
+      expect(
+        expensesAfterDelete.single.category.name,
+        catsAfterDelete.first.name,
+      );
 
-        final reordered = await repo.getCategories();
-        expect(reordered.first.name, customCat.name);
-        expect(reordered.first.label, 'ថ្លៃផ្ទះ');
+      // 6. Any category (including defaults like coffee) can be deleted
+      await repo.deleteCategory('coffee');
+      final catsAfterCoffeeDelete = await repo.getCategories();
+      expect(catsAfterCoffeeDelete.length, 4);
+      expect(catsAfterCoffeeDelete.any((c) => c.name == 'coffee'), isFalse);
 
-        // 4. Save expense with custom category
-        await repo.save(
-          Expense(
-            title: 'បង់ថ្លៃផ្ទះប្រចាំខែ',
-            amount: 200000,
-            category: customCat,
-            date: DateTime(2026, 9, 6),
-          ),
-        );
-        final expenses = await repo.all();
-        expect(expenses.single.category.name, customCat.name);
-        expect(expenses.single.category.label, 'ថ្លៃផ្ទះ');
+      // 7. Blank category name rejected
+      await expectLater(repo.addCategory('   '), throwsArgumentError);
 
-        // 5. Delete category -> expense reassigned to first remaining category
-        await repo.deleteCategory(customCat.name);
-        final catsAfterDelete = await repo.getCategories();
-        expect(catsAfterDelete.length, 5);
-        expect(catsAfterDelete.any((c) => c.name == customCat.name), isFalse);
+      // 8. Duplicate category rejected (case and trim insensitive)
+      await expectLater(repo.addCategory('បាយថ្ងៃត្រង់'), throwsArgumentError);
+      await expectLater(
+        repo.addCategory('  បាយថ្ងៃត្រង់  '),
+        throwsArgumentError,
+      );
 
-        final expensesAfterDelete = await repo.all();
-        expect(
-          expensesAfterDelete.single.category.name,
-          catsAfterDelete.first.name,
-        );
-
-        // 6. Any category (including defaults like coffee) can be deleted
-        await repo.deleteCategory('coffee');
-        final catsAfterCoffeeDelete = await repo.getCategories();
-        expect(catsAfterCoffeeDelete.length, 4);
-        expect(catsAfterCoffeeDelete.any((c) => c.name == 'coffee'), isFalse);
-
-        // 7. Blank category name rejected
-        await expectLater(
-          repo.addCategory('   '),
-          throwsArgumentError,
-        );
-
-        // 8. Duplicate category rejected (case and trim insensitive)
-        await expectLater(
-          repo.addCategory('បាយថ្ងៃត្រង់'),
-          throwsArgumentError,
-        );
-        await expectLater(
-          repo.addCategory('  បាយថ្ងៃត្រង់  '),
-          throwsArgumentError,
-        );
-
-        // 9. Automatic deduplication of existing duplicate categories
-        await repo.database.insert('categories', {
-          'id': 'custom_duplicate_test',
-          'label': 'បាយថ្ងៃត្រង់',
-          'color_value': 0xFF123456,
-          'sort_order': 99,
-          'is_custom': 1,
-        });
-        final catsWithDedup = await repo.getCategories();
-        final lunchMatches = catsWithDedup.where((c) => c.label == 'បាយថ្ងៃត្រង់');
-        expect(lunchMatches.length, 1);
-      } finally {
-        await repo.close();
-        await directory.delete(recursive: true);
-      }
-    },
-  );
+      // 9. Automatic deduplication of existing duplicate categories
+      await repo.database.insert('categories', {
+        'id': 'custom_duplicate_test',
+        'label': 'បាយថ្ងៃត្រង់',
+        'color_value': 0xFF123456,
+        'sort_order': 99,
+        'is_custom': 1,
+      });
+      final catsWithDedup = await repo.getCategories();
+      final lunchMatches = catsWithDedup.where(
+        (c) => c.label == 'បាយថ្ងៃត្រង់',
+      );
+      expect(lunchMatches.length, 1);
+    } finally {
+      await repo.close();
+      await directory.delete(recursive: true);
+    }
+  });
 
   test(
     'deleteMultiple deletes multiple records in SQLite transaction',
@@ -277,4 +341,3 @@ void main() {
     },
   );
 }
-

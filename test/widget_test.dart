@@ -13,7 +13,7 @@ class MemoryRepository implements ExpenseRepository {
   @override
   Database get database => throw UnsupportedError('Test double');
   @override
-  Future<List<Expense>> all() async =>
+  Future<List<Expense>> all({List<ExpenseCategory>? categories}) async =>
       [...items]..sort((a, b) => b.date.compareTo(a.date));
   @override
   Future<void> save(Expense expense) async {
@@ -557,5 +557,4 @@ void main() {
     },
   );
 }
-
 
