@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:kot_luy/data/expense_repository.dart';
+import 'package:kot_luy/formatters/khmer_number_words.dart';
 import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/screens/detail_screen.dart';
 import 'package:kot_luy/screens/drive_backup_sheet.dart';
@@ -680,7 +681,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 2),
+                    Text(
+                      khmerRielWords(total),
+                      key: const Key('totalAmountWords'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: muted, fontSize: 11),
+                    ),
+                    const SizedBox(height: 5),
                     Text(
                       '${expenses.length} កំណត់ត្រា • ${_period.label}',
                       style: const TextStyle(fontSize: 10, color: muted),
