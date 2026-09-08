@@ -76,7 +76,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _errorMessage = e.toString();
+          _errorMessage = _parseError(e);
         });
       }
     }
@@ -110,7 +110,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
       if (mounted) {
         setState(() {
           _actionInProgress = false;
-          _errorMessage = 'ការភ្ជាប់មិនបានសម្រេច: $e';
+          _errorMessage = _parseConnectError(e);
         });
       }
     }
@@ -156,7 +156,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
       if (mounted) {
         setState(() {
           _actionInProgress = false;
-          _errorMessage = e.toString();
+          _errorMessage = 'មិនអាចផ្ដាច់គណនីបានទេ: ${_parseError(e)}';
         });
       }
     }
@@ -198,7 +198,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
         setState(() {
           _actionInProgress = false;
           _backupFailed = true;
-          _backupFeedback = _parseError(e.toString());
+          _backupFeedback = _parseError(e);
           _backingUp = false;
         });
       }
@@ -222,7 +222,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
       if (mounted) {
         setState(() {
           _actionInProgress = false;
-          _errorMessage = e.toString();
+          _errorMessage = _parseError(e);
         });
       }
     }
@@ -247,7 +247,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
       if (mounted) {
         setState(() {
           _actionInProgress = false;
-          _errorMessage = e.toString();
+          _errorMessage = _parseError(e);
         });
       }
     }
@@ -304,24 +304,56 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
       if (mounted) {
         setState(() {
           _actionInProgress = false;
-          _errorMessage = 'ការស្ដារបរាជ័យ: $e';
+          _errorMessage = 'ការស្ដារបរាជ័យ: ${_parseError(e)}';
           _restoringId = null;
         });
       }
     }
   }
 
-  String _parseError(String error) {
-    if (error.contains('network')) {
-      return 'បញ្ហាតភ្ជាប់បណ្ដាញ សូមពិនិត្យមើល Wi-Fi ឬទិន្នន័យចល័ត (SIM)';
-    } else if (error.contains('reconnect')) {
-      return 'សូមភ្ជាប់គណនី Google ឡើងវិញ';
-    } else if (error.contains('quota')) {
-      return 'ទំហំផ្ទុកលើ Google Drive របស់អ្នកបានពេញ';
-    } else if (error.contains('permission')) {
-      return 'គ្មានសិទ្ធិប្រើប្រាស់ Google Drive';
+  String? _parseConnectError(Object error) {
+    final str = error.toString().toLowerCase();
+    if (str.contains('cancelled') ||
+        str.contains('canceled') ||
+        str.contains('no_account')) {
+      // User dismissed account chooser dialog; no error banner needed
+      return null;
     }
-    return 'មិនអាចបម្រុងទុកបានទេ: $error';
+    if (str.contains('auth_denied') ||
+        str.contains('authorization was not granted') ||
+        str.contains('permission')) {
+      return 'អ្នកមិនទាន់បានអនុញ្ញាតសិទ្ធិ Google Drive នៅឡើយទេ។ សូមព្យាយាមភ្ជាប់ម្ដងទៀត ហើយចុច «យល់ព្រម» ឬ «Allow»។';
+    }
+    if (str.contains('network') ||
+        str.contains('socket') ||
+        str.contains('timeout')) {
+      return 'បញ្ហាតភ្ជាប់បណ្ដាញ សូមពិនិត្យមើល Wi-Fi ឬទិន្នន័យចល័ត (SIM)';
+    }
+    return 'ការភ្ជាប់មិនបានសម្រេចទេ សូមព្យាយាមម្ដងទៀត';
+  }
+
+  String _parseError(Object error) {
+    final str = error.toString().toLowerCase();
+    if (str.contains('network') ||
+        str.contains('socket') ||
+        str.contains('timeout')) {
+      return 'បញ្ហាតភ្ជាប់បណ្ដាញ សូមពិនិត្យមើល Wi-Fi ឬទិន្នន័យចល័ត (SIM)';
+    } else if (str.contains('auth_denied') ||
+        str.contains('authorization was not granted') ||
+        str.contains('permission')) {
+      return 'មិនទាន់បានអនុញ្ញាតសិទ្ធិ Google Drive នៅឡើយទេ។ សូមភ្ជាប់ឡើងវិញ ហើយចុច «យល់ព្រម» ឬ «Allow»។';
+    } else if (str.contains('reconnect') ||
+        str.contains('unauthenticated') ||
+        str.contains('auth_failed')) {
+      return 'សូមភ្ជាប់គណនី Google ឡើងវិញ';
+    } else if (str.contains('quota') || str.contains('storage')) {
+      return 'ទំហំផ្ទុកលើ Google Drive របស់អ្នកបានពេញ';
+    } else if (str.contains('too_large')) {
+      return 'ឯកសារបម្រុងទុកមានទំហំធំលើសកំណត់';
+    } else if (str.contains('integrity') || str.contains('invalid')) {
+      return 'ឯកសារបម្រុងទុកមិនត្រឹមត្រូវ ឬខូចខាត';
+    }
+    return 'មិនអាចដំណើរការបានទេ សូមព្យាយាមម្ដងទៀត';
   }
 
   String _formatDate(DateTime? dt) {
@@ -433,11 +465,15 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
                               ),
                             ),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(
-                                  Icons.error_outline_rounded,
-                                  color: Color(0xFFAD5347),
-                                  size: 20,
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 2),
+                                  child: Icon(
+                                    Icons.error_outline_rounded,
+                                    color: Color(0xFFAD5347),
+                                    size: 20,
+                                  ),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -446,6 +482,19 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
                                     style: const TextStyle(
                                       color: Color(0xFFAD5347),
                                       fontSize: 13,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => setState(() => _errorMessage = null),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(2),
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      color: Color(0xFFAD5347),
+                                      size: 18,
                                     ),
                                   ),
                                 ),
