@@ -7,6 +7,7 @@ import 'package:kot_luy/data/expense_repository.dart';
 import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/screens/category_management_sheet.dart';
 import 'package:kot_luy/theme.dart';
+import 'package:kot_luy/widgets/category_picker_sheet.dart';
 import 'package:kot_luy/widgets/riel_input_formatter.dart';
 
 Future<bool?> showExpenseForm(
@@ -103,147 +104,11 @@ class _ExpenseFormState extends State<ExpenseForm> {
   }
 
   Future<void> _showCategoryPickerSheet() async {
-    final selected = await showModalBottomSheet<ExpenseCategory>(
+    final selected = await CategoryPickerSheet.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(ctx).height * 0.75,
-        ),
-        decoration: const BoxDecoration(
-          color: paper,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 10, bottom: 8),
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: line,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 12, 6),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'ជ្រើសរើសមុខចំណាយ',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: ink,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      key: const Key('closeCategoryPicker'),
-                      icon: const Icon(Icons.close_rounded, color: muted),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                  itemCount: _categories.length,
-                  itemBuilder: (ctx, index) {
-                    final cat = _categories[index];
-                    final isSel = cat == _category;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Material(
-                        color: isSel ? cat.background : Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: BorderSide(
-                            color: isSel ? cat.color : line,
-                            width: isSel ? 1.5 : 1,
-                          ),
-                        ),
-                        child: ListTile(
-                          key: Key('picker_category_${cat.name}'),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          leading: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: cat.color,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          title: Text(
-                            cat.label,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: isSel
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
-                              color: isSel ? cat.color : ink,
-                            ),
-                          ),
-                          trailing: isSel
-                              ? Icon(
-                                  Icons.check_circle_rounded,
-                                  color: cat.color,
-                                  size: 20,
-                                )
-                              : null,
-                          onTap: () => Navigator.pop(ctx, cat),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: const BorderSide(color: green),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  icon: const Icon(
-                    Icons.swap_vert_rounded,
-                    size: 18,
-                    color: green,
-                  ),
-                  label: const Text(
-                    'រៀបចំ ឬ បន្ថែមមុខចំណាយថ្មី',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: green,
-                    ),
-                  ),
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    await _manageCategories();
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      categories: _categories,
+      selectedCategory: _category,
+      onManageCategories: _manageCategories,
     );
     if (selected != null && mounted) {
       setState(() => _category = selected);
