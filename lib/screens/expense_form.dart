@@ -105,7 +105,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
 
   Future<void> _showCategoryPickerSheet() async {
     final selected = await CategoryPickerSheet.show(
-      context: context,
+      context,
       categories: _categories,
       selectedCategory: _category,
       onManageCategories: _manageCategories,
