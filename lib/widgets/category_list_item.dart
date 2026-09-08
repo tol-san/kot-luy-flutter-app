@@ -69,6 +69,8 @@ class CategoryListItem extends StatelessWidget {
                     Expanded(
                       child: Text(
                         category.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 14,
                           height: 1.6,
