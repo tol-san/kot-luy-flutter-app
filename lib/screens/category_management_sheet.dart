@@ -363,17 +363,51 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
           : Material(
               color: paper,
               child: ExpansionTile(
+                shape: const Border(),
+                collapsedShape: const Border(),
                 title: Text(
                   'មុខចំណាយដែលបានលាក់ (${_archivedCategories.length})',
                 ),
                 children: _archivedCategories
                     .map(
-                      (category) => ListTile(
-                        title: Text(category.label),
-                        leading: Icon(category.icon, color: category.color),
-                        trailing: TextButton(
-                          onPressed: () => _restoreCategory(category),
-                          child: const Text('បង្ហាញឡើងវិញ'),
+                      (category) => Padding(
+                        key: ValueKey('archived_category_${category.name}'),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: category.color,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    category.label,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      height: 1.6,
+                                      color: ink,
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => _restoreCategory(category),
+                                    child: const Text('បង្ហាញឡើងវិញ'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     )

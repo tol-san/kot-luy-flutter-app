@@ -28,7 +28,7 @@ class CategoryListItem extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       key: ValueKey(category.name),
-      height: 48,
+      constraints: const BoxConstraints(minHeight: 48),
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -53,8 +53,8 @@ class CategoryListItem extends StatelessWidget {
               key: Key('select_category_${category.name}'),
               onTap: onSelect,
               borderRadius: BorderRadius.circular(8),
-              child: SizedBox(
-                height: double.infinity,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Row(
                   children: [
                     Container(
@@ -71,6 +71,7 @@ class CategoryListItem extends StatelessWidget {
                         category.label,
                         style: const TextStyle(
                           fontSize: 14,
+                          height: 1.6,
                           fontWeight: FontWeight.w600,
                           color: ink,
                         ),
