@@ -26,11 +26,18 @@ flutter run
 
 ## Installable Android build
 
-```sh
-flutter build apk --release
+```powershell
+./scripts/build-release.ps1
 ```
 
-Output: `build/app/outputs/flutter-apk/app-release.apk`.
+Runs analysis, all Flutter tests, and the native Android backup regression tests
+before building split APKs in `build/app/outputs/flutter-apk/`.
+The Flutter contract test generates databases using the actual repository's
+creation and upgrade callbacks; Android tests must successfully back them up.
+This catches local schema changes that have not been added to the native backup
+reader. For native tests alone, first run
+`flutter test test/backup_native_contract_test.dart`, then run
+`./gradlew.bat :app:testDebugUnitTest` from `android/`.
 The current release configuration uses the local development signing key for direct installation/testing. Configure your own release keystore before Play Store distribution.
 
 ## Browser preview

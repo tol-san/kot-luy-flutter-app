@@ -222,8 +222,10 @@ class DriveBackup(private val context: Context) {
         SQLiteDatabase.openDatabase(path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
             db.beginTransactionNonExclusive()
             try {
-                if (db.version !in 2..3) throw BackupFailure("database")
-                // Local v3 only repairs category data. The JSON interchange
+                if (db.version !in 2..4) throw BackupFailure("database")
+                // Local v3 repairs category data; v4 adds is_archived, which
+                // is preserved by rows() and understood by the Dart reader.
+                // The JSON interchange
                 // schema remains v2 so existing backups/readers stay compatible.
                 return JSONObject().put("format", FORMAT).put("version", 1).put("schemaVersion", 2)
                     .put("createdAt", System.currentTimeMillis())

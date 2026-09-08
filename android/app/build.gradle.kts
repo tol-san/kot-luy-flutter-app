@@ -55,6 +55,12 @@ flutter {
     source = "../.."
 }
 
+// Fixture changes must invalidate Gradle's cached test result after a Dart
+// schema migration, even when no Kotlin source changed.
+tasks.withType<Test>().configureEach {
+    inputs.dir(rootProject.file("../build/backup-contract"))
+}
+
 dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")
