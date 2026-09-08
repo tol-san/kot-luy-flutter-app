@@ -100,28 +100,9 @@ class DriveSnapshotsSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              Row(
-                children: [
-                  Text(
-                    formatBackupBytes(item.size),
-                    style: const TextStyle(fontSize: 12, color: muted),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 1,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F3EA),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'Read-only',
-                      style: TextStyle(fontSize: 10, color: muted),
-                    ),
-                  ),
-                ],
+              Text(
+                formatBackupBytes(item.size),
+                style: const TextStyle(fontSize: 12, color: muted),
               ),
             ],
           ),

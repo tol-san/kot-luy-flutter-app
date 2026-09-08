@@ -211,13 +211,7 @@ class _DriveBackupSkeletonState extends State<DriveBackupSkeleton>
               children: [
                 const _SkeletonBox(width: 120, height: 14, borderRadius: 6),
                 const SizedBox(height: 8),
-                Row(
-                  children: const [
-                    _SkeletonBox(width: 55, height: 11, borderRadius: 4),
-                    SizedBox(width: 8),
-                    _SkeletonBox(width: 48, height: 14, borderRadius: 4),
-                  ],
-                ),
+                const _SkeletonBox(width: 55, height: 11, borderRadius: 4),
               ],
             ),
           ),
