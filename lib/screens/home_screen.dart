@@ -10,6 +10,7 @@ import 'package:kot_luy/screens/expense_form.dart';
 import 'package:kot_luy/screens/pdf_export_sheet.dart';
 import 'package:kot_luy/theme.dart';
 import 'package:kot_luy/widgets/expense_chart.dart';
+import 'package:kot_luy/widgets/home/home_app_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.repository});
@@ -275,7 +276,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _header(),
+                          HomeAppBar(
+                            onPdfExport: () => PdfExportSheet.show(
+                              context,
+                              repository: widget.repository,
+                            ),
+                            onDriveBackup: () => DriveBackupSheet.show(
+                              context,
+                              widget.repository,
+                              onDataRestored: _load,
+                            ),
+                          ),
                           const SizedBox(height: 18),
                           Text(
                             _reports
@@ -299,7 +310,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           const SizedBox(height: 16),
                           _summary(),
                           const SizedBox(height: 14),
-                          if (!_reports) _companion(),
+                          if (!_reports)
+                            HomeCompanion(hasExpenses: _expenses.isNotEmpty),
                           const SizedBox(height: 15),
                           const Divider(height: 1),
                           const SizedBox(height: 15),
@@ -518,11 +530,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 14),
                 child: Row(
                   children: [
-                    _nav(
-                      Icons.space_dashboard_outlined,
-                      'ទិដ្ឋភាពទូទៅ',
-                      !_reports,
-                      () => setState(() {
+                    HomeNavigationItem(
+                      icon: Icons.space_dashboard_outlined,
+                      label: 'ទិដ្ឋភាពទូទៅ',
+                      selected: !_reports,
+                      onTap: () => setState(() {
                         _reports = false;
                         _isSelecting = false;
                         _selectedIds.clear();
@@ -546,11 +558,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    _nav(
-                      Icons.donut_small_outlined,
-                      'របាយការណ៍',
-                      _reports,
-                      () => setState(() {
+                    HomeNavigationItem(
+                      icon: Icons.donut_small_outlined,
+                      label: 'របាយការណ៍',
+                      selected: _reports,
+                      onTap: () => setState(() {
                         _reports = true;
                         _isSelecting = false;
                         _selectedIds.clear();
@@ -566,53 +578,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     ),
   );
 
-  Widget _header() => Row(
-    children: [
-      Image.asset(
-        'assets/logo.png',
-        width: 93,
-        height: 36,
-        fit: BoxFit.contain,
-        semanticLabel: 'កត់លុយ',
-      ),
-      const Spacer(),
-      IconButton(
-        key: const Key('pdfExportHeaderButton'),
-        tooltip: 'ទាញយករបាយការណ៍ PDF',
-        onPressed: () =>
-            PdfExportSheet.show(context, repository: widget.repository),
-        icon: Container(
-          padding: const EdgeInsets.all(7),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEDF1E3),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.picture_as_pdf_outlined,
-            color: green,
-            size: 20,
-          ),
-        ),
-      ),
-      const SizedBox(width: 6),
-      IconButton(
-        tooltip: 'បម្រុងទុកទិន្នន័យ (Google Drive)',
-        onPressed: () => DriveBackupSheet.show(
-          context,
-          widget.repository,
-          onDataRestored: _load,
-        ),
-        icon: Container(
-          padding: const EdgeInsets.all(7),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEDF1E3),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.cloud_sync_outlined, color: green, size: 20),
-        ),
-      ),
-    ],
-  );
   Widget _periodPicker() => Container(
     padding: const EdgeInsets.all(3),
     decoration: BoxDecoration(
@@ -903,46 +868,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _companion() => Container(
-    padding: const EdgeInsets.fromLTRB(18, 8, 6, 8),
-    decoration: BoxDecoration(
-      color: const Color(0xFFEDF1E3),
-      borderRadius: BorderRadius.circular(22),
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'ហេ៎! ធ្វើបានល្អហើយ 🌿',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                _expenses.isEmpty
-                    ? 'ចាប់ផ្ដើមពីចំណាយដំបូង\nខ្ញុំនៅទីនេះ ជួយអ្នកកត់ត្រា។'
-                    : 'រាល់ការកត់ត្រា ជួយឱ្យអ្នក\nស្គាល់ទម្លាប់ចំណាយខ្លួនឯង។',
-                style: const TextStyle(
-                  color: Color(0xFF505F46),
-                  fontSize: 11,
-                  height: 1.8,
-                ),
-              ),
-            ],
-          ),
-        ),
-        SvgPicture.asset(
-          'assets/illustrations/wallet.svg',
-          width: 96,
-          height: 90,
-          semanticsLabel: 'មិត្តកាបូបលុយញញឹម',
-        ),
-      ],
-    ),
-  );
-
   Widget _transactionList() {
     final items = _filteredExpenses;
     if (items.isEmpty) {
@@ -1203,31 +1128,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       ),
       const SizedBox(height: 24),
-      _companion(),
+      HomeCompanion(hasExpenses: _expenses.isNotEmpty),
     ];
   }
-
-  Widget _nav(IconData icon, String label, bool selected, VoidCallback onTap) =>
-      InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 2),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: selected ? green : muted, size: 22),
-              const SizedBox(height: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 9,
-                  color: selected ? green : muted,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
 }
