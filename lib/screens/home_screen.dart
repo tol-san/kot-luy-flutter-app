@@ -11,6 +11,7 @@ import 'package:kot_luy/screens/pdf_export_sheet.dart';
 import 'package:kot_luy/theme.dart';
 import 'package:kot_luy/widgets/expense_chart.dart';
 import 'package:kot_luy/widgets/home/home_app_bar.dart';
+import 'package:kot_luy/widgets/home/home_report_section.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.repository});
@@ -316,7 +317,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           const Divider(height: 1),
                           const SizedBox(height: 15),
                           if (_reports)
-                            ..._reportWidgets()
+                            HomeReportSection(
+                              expenses: _inPeriod,
+                              categories: _categories,
+                              onPdfExport: () => PdfExportSheet.show(
+                                context,
+                                repository: widget.repository,
+                              ),
+                              companion: HomeCompanion(
+                                hasExpenses: _expenses.isNotEmpty,
+                              ),
+                            )
                           else ...[
                             if (_isSelecting)
                               Row(
@@ -1028,107 +1039,5 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         },
       ),
     );
-  }
-
-  List<Widget> _reportWidgets() {
-    final expenses = _inPeriod;
-    final total = expenses.fold(0, (a, e) => a + e.amount);
-    final presentMap = <String, ExpenseCategory>{
-      for (final c in _categories) c.name: c,
-      for (final e in expenses) e.category.name: e.category,
-    };
-    final totals = {
-      for (final c in presentMap.values)
-        c: expenses
-            .where((e) => e.category.name == c.name)
-            .fold(0, (a, e) => a + e.amount),
-    };
-    final sorted = totals.entries.where((e) => e.value > 0).toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    return [
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            'ចំណាយតាមមុខចំណាយ',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-          FilledButton.tonalIcon(
-            key: const ValueKey('pdfExportReportButton'),
-            style: FilledButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            ),
-            icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
-            label: const Text('ទាញយក PDF', style: TextStyle(fontSize: 12)),
-            onPressed: () =>
-                PdfExportSheet.show(context, repository: widget.repository),
-          ),
-        ],
-      ),
-      const SizedBox(height: 8),
-      if (total == 0)
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 40),
-          child: Center(
-            child: Text(
-              'កត់ចំណាយដំបូង ដើម្បីមើលរបាយការណ៍។',
-              style: TextStyle(color: muted, fontSize: 12),
-            ),
-          ),
-        ),
-      ...sorted.map(
-        (entry) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: entry.key.color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      entry.key.label,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ),
-                  Text(
-                    riel(entry.value),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '${(entry.value / total * 100).toStringAsFixed(1)}%',
-                    style: const TextStyle(color: muted, fontSize: 11),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(5),
-                child: LinearProgressIndicator(
-                  value: entry.value / total,
-                  backgroundColor: entry.key.background,
-                  color: entry.key.color,
-                  minHeight: 7,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      const SizedBox(height: 24),
-      HomeCompanion(hasExpenses: _expenses.isNotEmpty),
-    ];
   }
 }
