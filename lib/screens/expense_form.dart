@@ -45,6 +45,13 @@ class _ExpenseFormState extends State<ExpenseForm> {
   Timer? _ticker;
   bool _saving = false;
   String? _error;
+  String? _dateTimeError;
+
+  void _warnFutureDateTime() {
+    setState(() {
+      _dateTimeError = 'មិនអាចកត់ចំណាយនៅពេលអនាគតបានទេ។ សូមជ្រើសរើសកាលបរិច្ឆេទ និងម៉ោងដែលបានកន្លងផុត ឬពេលបច្ចុប្បន្ន។';
+    });
+  }
 
   @override
   void initState() {
@@ -124,17 +131,18 @@ class _ExpenseFormState extends State<ExpenseForm> {
 
   Future<void> _save() async {
     if (_saving || !_form.currentState!.validate()) return;
+    final now = clock.now();
+    final dateToSave = _isCustomDateTime ? _date : now;
+    if (dateToSave.isAfter(now)) {
+      _warnFutureDateTime();
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
     });
     try {
       final title = _category.label;
-      final now = clock.now();
-      var dateToSave = _isCustomDateTime ? _date : now;
-      if (dateToSave.isAfter(now)) {
-        dateToSave = now;
-      }
       await widget.repository.save(
         Expense(
           id: widget.expense?.id,
@@ -166,7 +174,6 @@ class _ExpenseFormState extends State<ExpenseForm> {
       lastDate: now,
     );
     if (picked != null && mounted) {
-      _ticker?.cancel();
       final newDate = DateTime(
         picked.year,
         picked.month,
@@ -174,9 +181,15 @@ class _ExpenseFormState extends State<ExpenseForm> {
         _date.hour,
         _date.minute,
       );
+      if (newDate.isAfter(clock.now())) {
+        _warnFutureDateTime();
+        return;
+      }
+      _ticker?.cancel();
       setState(() {
         _isCustomDateTime = true;
-        _date = newDate.isAfter(now) ? now : newDate;
+        _date = newDate;
+        _dateTimeError = null;
       });
     }
   }
@@ -187,7 +200,6 @@ class _ExpenseFormState extends State<ExpenseForm> {
       initialTime: TimeOfDay(hour: _date.hour, minute: _date.minute),
     );
     if (pickedTime != null && mounted) {
-      _ticker?.cancel();
       final now = clock.now();
       final candidate = DateTime(
         _date.year,
@@ -197,19 +209,13 @@ class _ExpenseFormState extends State<ExpenseForm> {
         pickedTime.minute,
       );
       if (candidate.isAfter(now)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('មិនអាចកំណត់ម៉ោងលើសពីពេលបច្ចុប្បន្នបានទេ'),
-          ),
-        );
-        setState(() {
-          _isCustomDateTime = true;
-          _date = now;
-        });
+        _warnFutureDateTime();
       } else {
+        _ticker?.cancel();
         setState(() {
           _isCustomDateTime = true;
           _date = candidate;
+          _dateTimeError = null;
         });
       }
     }
@@ -610,6 +616,21 @@ class _ExpenseFormState extends State<ExpenseForm> {
                     ),
                   ],
                 ),
+                if (_dateTimeError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        _dateTimeError!,
+                        key: const Key('futureDateTimeWarning'),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
