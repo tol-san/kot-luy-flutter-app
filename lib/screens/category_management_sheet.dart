@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:kot_luy/data/expense_repository.dart';
 import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/theme.dart';
-import 'package:kot_luy/widgets/category_color_picker.dart';
 import 'package:kot_luy/widgets/category_input_row.dart';
 import 'package:kot_luy/widgets/category_list_item.dart';
 
