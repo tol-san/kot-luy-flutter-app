@@ -29,7 +29,7 @@ void main() {
     }
   });
   for (final enabled in [true, false]) {
-    for (final action in ['backup', 'restore']) {
+    for (final action in ['backup', 'backup refresh failure', 'restore']) {
       testWidgets(
         '$action preserves settings $enabled and scopes its progress',
         (tester) async {
@@ -38,6 +38,7 @@ void main() {
           final pending = Completer<Object?>();
           var configureCalls = 0;
           var actionCalls = 0;
+          var listCalls = 0;
           final status = {
             'email': 'test@example.com',
             'automatic': enabled,
@@ -50,6 +51,9 @@ void main() {
               case 'status':
                 return status;
               case 'list':
+                if (++listCalls > 1 && action == 'backup refresh failure') {
+                  throw PlatformException(code: 'network');
+                }
                 return [
                   {
                     'id': 'one',
@@ -82,11 +86,16 @@ void main() {
           await tester.pumpWidget(
             MaterialApp(
               theme: appTheme(),
-              home: Scaffold(body: DriveBackupSheet(repository: _Repository())),
+              home: Scaffold(body: Builder(builder: (context) => TextButton(
+                onPressed: () => DriveBackupSheet.show(context, _Repository()),
+                child: const Text('Open backup'),
+              ))),
             ),
           );
           await tester.pumpAndSettle();
-          if (action == 'backup') {
+          await tester.tap(find.text('Open backup'));
+          await tester.pumpAndSettle();
+          if (action.startsWith('backup')) {
             await tester.ensureVisible(find.text('បម្រុងទុកឥឡូវនេះ'));
             await tester.pumpAndSettle();
             await tester.tap(find.text('បម្រុងទុកឥឡូវនេះ'));
@@ -101,7 +110,7 @@ void main() {
           await tester.pump(const Duration(milliseconds: 350));
           expect(find.byType(CircularProgressIndicator), findsOneWidget);
           expect(
-            find.text(action == 'backup' ? 'កំពុងបម្រុងទុក…' : 'កំពុងស្ដារ…'),
+            find.text(action.startsWith('backup') ? 'កំពុងបម្រុងទុក…' : 'កំពុងស្ដារ…'),
             findsOneWidget,
           );
           for (final toggle in tester.widgetList<SwitchListTile>(
@@ -125,12 +134,29 @@ void main() {
           }
           expect(configureCalls, 0);
           expect(actionCalls, 1);
-          if (action == 'backup' && enabled) {
+          if (action.startsWith('backup') && enabled) {
             pending.complete(status);
           } else {
             pending.completeError(PlatformException(code: 'network'));
           }
           await tester.pumpAndSettle();
+          if (action.startsWith('backup')) {
+            if (enabled) {
+              expect(find.byType(DriveBackupSheet), findsNothing);
+              expect(
+                find.widgetWithText(SnackBar, 'បានបម្រុងទុកទៅ Google Drive ដោយជោគជ័យ!'),
+                findsOneWidget,
+              );
+            } else {
+              final message = find.descendant(
+                of: find.byType(DriveBackupSheet),
+                matching: find.textContaining('បញ្ហាតភ្ជាប់បណ្ដាញ'),
+              );
+              expect(message, findsOneWidget);
+              expect(message.hitTestable(), findsOneWidget);
+              expect(find.byType(SnackBar), findsNothing);
+            }
+          }
           expect(find.byType(CircularProgressIndicator), findsNothing);
           for (final toggle in tester.widgetList<SwitchListTile>(
             find.byType(SwitchListTile),
