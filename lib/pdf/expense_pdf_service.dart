@@ -1,26 +1,14 @@
-import 'dart:io';
-import 'package:flutter/services.dart';
+import 'dart:typed_data';
+
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf_text_shaper/pdf_text_shaper.dart';
 
 import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/models/report_period.dart';
+import 'package:kot_luy/pdf/pdf_font_asset_loader.dart';
 
 class ExpensePdfService {
-  static Future<Uint8List> _loadFontBytes(String path) async {
-    try {
-      final byteData = await rootBundle.load(path);
-      return byteData.buffer.asUint8List(
-        byteData.offsetInBytes,
-        byteData.lengthInBytes,
-      );
-    } catch (_) {
-      // Fallback for tests running outside Flutter asset bundle context
-      return await File(path).readAsBytes();
-    }
-  }
-
   /// Builds PDF byte data for the given [expenses], [period], and [level].
   /// Uses HarfBuzz OpenType complex-script shaping with Noto Sans Khmer fonts.
   static Future<Uint8List> generateReport({
@@ -35,42 +23,45 @@ class ExpensePdfService {
     Uint8List? boldFontBytes,
   }) async {
     // 1. Load font bytes and prepare shaped fonts
-    final regBytes = regularFontBytes ??
+    final regBytes =
+        regularFontBytes ??
         (shapedRegularFont == null
-            ? await _loadFontBytes('assets/fonts/NotoSansKhmer-Regular.ttf')
+            ? await PdfFontAssetLoader.load(
+                'assets/fonts/NotoSansKhmer-Regular.ttf',
+              )
             : null);
-    final bldBytes = boldFontBytes ??
+    final bldBytes =
+        boldFontBytes ??
         (shapedBoldFont == null
-            ? await _loadFontBytes('assets/fonts/NotoSansKhmer-Bold.ttf')
+            ? await PdfFontAssetLoader.load(
+                'assets/fonts/NotoSansKhmer-Bold.ttf',
+              )
             : null);
 
     final bool ownsRegular = shapedRegularFont == null;
     final bool ownsBold = shapedBoldFont == null;
 
-    final effectiveRegular = shapedRegularFont ??
+    final effectiveRegular =
+        shapedRegularFont ??
         ShapedFont.fromBytes(regBytes!, name: 'NotoSansKhmer-Regular');
-    final effectiveBold = shapedBoldFont ??
+    final effectiveBold =
+        shapedBoldFont ??
         ShapedFont.fromBytes(bldBytes!, name: 'NotoSansKhmer-Bold');
 
     try {
-      final baseFont = regularFont ??
+      final baseFont =
+          regularFont ??
           (regBytes != null
-              ? pw.Font.ttf(
-                  ByteData.sublistView(regBytes),
-                )
+              ? pw.Font.ttf(ByteData.sublistView(regBytes))
               : null);
-      final headerFont = boldFont ??
+      final headerFont =
+          boldFont ??
           (bldBytes != null
-              ? pw.Font.ttf(
-                  ByteData.sublistView(bldBytes),
-                )
+              ? pw.Font.ttf(ByteData.sublistView(bldBytes))
               : null);
 
       final theme = (baseFont != null && headerFont != null)
-          ? pw.ThemeData.withFont(
-              base: baseFont,
-              bold: headerFont,
-            )
+          ? pw.ThemeData.withFont(base: baseFont, bold: headerFont)
           : pw.ThemeData.base();
 
       final pdf = pw.Document(theme: theme);
@@ -169,7 +160,9 @@ class ExpensePdfService {
                 pw.SizedBox(width: 8),
                 _buildKpiCard(
                   title: 'មធ្យមភាគ/ដង',
-                  value: totalCount > 0 ? riel(totalAmount ~/ totalCount) : '0 ៛',
+                  value: totalCount > 0
+                      ? riel(totalAmount ~/ totalCount)
+                      : '0 ៛',
                   bgColor: PdfColors.white,
                   textColor: darkInk,
                   borderColor: borderColor,
@@ -513,11 +506,41 @@ class ExpensePdfService {
           repeat: true,
           decoration: pw.BoxDecoration(color: primaryColor),
           children: [
-            cell('ល.រ', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.center),
-            cell('មុខចំណាយ', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.start),
-            cell('ចំនួនដង', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.center),
-            cell('ចំនួនទឹកប្រាក់', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.end),
-            cell('ភាគរយ', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.end),
+            cell(
+              'ល.រ',
+              font: boldFont,
+              fontSize: 9,
+              color: PdfColors.white,
+              align: ShapedTextAlign.center,
+            ),
+            cell(
+              'មុខចំណាយ',
+              font: boldFont,
+              fontSize: 9,
+              color: PdfColors.white,
+              align: ShapedTextAlign.start,
+            ),
+            cell(
+              'ចំនួនដង',
+              font: boldFont,
+              fontSize: 9,
+              color: PdfColors.white,
+              align: ShapedTextAlign.center,
+            ),
+            cell(
+              'ចំនួនទឹកប្រាក់',
+              font: boldFont,
+              fontSize: 9,
+              color: PdfColors.white,
+              align: ShapedTextAlign.end,
+            ),
+            cell(
+              'ភាគរយ',
+              font: boldFont,
+              fontSize: 9,
+              color: PdfColors.white,
+              align: ShapedTextAlign.end,
+            ),
           ],
         ),
         ...sortedCategories.asMap().entries.map((entry) {
@@ -530,22 +553,82 @@ class ExpensePdfService {
           return pw.TableRow(
             decoration: isOdd ? pw.BoxDecoration(color: secondaryColor) : null,
             children: [
-              cell('${i + 1}', font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.center),
-              cell(item.label, font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.start),
-              cell('${item.count}', font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.center),
-              cell(riel(item.total), font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.end),
-              cell('$pct%', font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.end),
+              cell(
+                '${i + 1}',
+                font: regularFont,
+                fontSize: 8.5,
+                color: darkInk,
+                align: ShapedTextAlign.center,
+              ),
+              cell(
+                item.label,
+                font: regularFont,
+                fontSize: 8.5,
+                color: darkInk,
+                align: ShapedTextAlign.start,
+              ),
+              cell(
+                '${item.count}',
+                font: regularFont,
+                fontSize: 8.5,
+                color: darkInk,
+                align: ShapedTextAlign.center,
+              ),
+              cell(
+                riel(item.total),
+                font: regularFont,
+                fontSize: 8.5,
+                color: darkInk,
+                align: ShapedTextAlign.end,
+              ),
+              cell(
+                '$pct%',
+                font: regularFont,
+                fontSize: 8.5,
+                color: darkInk,
+                align: ShapedTextAlign.end,
+              ),
             ],
           );
         }),
         // Summary row
         pw.TableRow(
           children: [
-            cell('', font: boldFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.center),
-            cell('សរុប', font: boldFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.start),
-            cell('$totalCount', font: boldFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.center),
-            cell(riel(totalAmount), font: boldFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.end),
-            cell('100%', font: boldFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.end),
+            cell(
+              '',
+              font: boldFont,
+              fontSize: 8.5,
+              color: darkInk,
+              align: ShapedTextAlign.center,
+            ),
+            cell(
+              'សរុប',
+              font: boldFont,
+              fontSize: 8.5,
+              color: darkInk,
+              align: ShapedTextAlign.start,
+            ),
+            cell(
+              '$totalCount',
+              font: boldFont,
+              fontSize: 8.5,
+              color: darkInk,
+              align: ShapedTextAlign.center,
+            ),
+            cell(
+              riel(totalAmount),
+              font: boldFont,
+              fontSize: 8.5,
+              color: darkInk,
+              align: ShapedTextAlign.end,
+            ),
+            cell(
+              '100%',
+              font: boldFont,
+              fontSize: 8.5,
+              color: darkInk,
+              align: ShapedTextAlign.end,
+            ),
           ],
         ),
       ],
@@ -602,10 +685,34 @@ class ExpensePdfService {
           repeat: true,
           decoration: pw.BoxDecoration(color: primaryColor),
           children: [
-            cell('ល.រ', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.center),
-            cell('កាលបរិច្ឆេទ', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.start),
-            cell('មុខចំណាយ', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.start),
-            cell('ចំនួនទឹកប្រាក់', font: boldFont, fontSize: 9, color: PdfColors.white, align: ShapedTextAlign.end),
+            cell(
+              'ល.រ',
+              font: boldFont,
+              fontSize: 9,
+              color: PdfColors.white,
+              align: ShapedTextAlign.center,
+            ),
+            cell(
+              'កាលបរិច្ឆេទ',
+              font: boldFont,
+              fontSize: 9,
+              color: PdfColors.white,
+              align: ShapedTextAlign.start,
+            ),
+            cell(
+              'មុខចំណាយ',
+              font: boldFont,
+              fontSize: 9,
+              color: PdfColors.white,
+              align: ShapedTextAlign.start,
+            ),
+            cell(
+              'ចំនួនទឹកប្រាក់',
+              font: boldFont,
+              fontSize: 9,
+              color: PdfColors.white,
+              align: ShapedTextAlign.end,
+            ),
           ],
         ),
         ...expenses.asMap().entries.map((entry) {
@@ -616,10 +723,34 @@ class ExpensePdfService {
           return pw.TableRow(
             decoration: isOdd ? pw.BoxDecoration(color: secondaryColor) : null,
             children: [
-              cell('${i + 1}', font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.center),
-              cell(dateStr, font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.start),
-              cell(e.category.label, font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.start),
-              cell(riel(e.amount), font: regularFont, fontSize: 8.5, color: darkInk, align: ShapedTextAlign.end),
+              cell(
+                '${i + 1}',
+                font: regularFont,
+                fontSize: 8.5,
+                color: darkInk,
+                align: ShapedTextAlign.center,
+              ),
+              cell(
+                dateStr,
+                font: regularFont,
+                fontSize: 8.5,
+                color: darkInk,
+                align: ShapedTextAlign.start,
+              ),
+              cell(
+                e.category.label,
+                font: regularFont,
+                fontSize: 8.5,
+                color: darkInk,
+                align: ShapedTextAlign.start,
+              ),
+              cell(
+                riel(e.amount),
+                font: regularFont,
+                fontSize: 8.5,
+                color: darkInk,
+                align: ShapedTextAlign.end,
+              ),
             ],
           );
         }),
