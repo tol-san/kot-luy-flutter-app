@@ -61,7 +61,6 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
   List<ExpenseCategory> _archivedCategories = [];
   bool _loading = true;
   bool _adding = false;
-  Color _selectedColor = ExpenseCategory.autoColors[5];
   String? _highlightedCategoryId;
   Timer? _highlightTimer;
 
@@ -144,10 +143,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
 
     setState(() => _adding = true);
     try {
-      final newCat = await widget.repository.addCategory(
-        cleanName,
-        color: _selectedColor,
-      );
+      final newCat = await widget.repository.addCategory(cleanName);
       _categories.add(newCat);
       widget.onCategoriesChanged?.call(_categories);
       if (mounted) {
@@ -291,11 +287,6 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
               existingCategories: _categories,
               onSelectExisting: _selectCategory,
               isAdding: _adding,
-            ),
-            CategoryColorPicker(
-              colors: ExpenseCategory.autoColors,
-              selectedColor: _selectedColor,
-              onChanged: (color) => setState(() => _selectedColor = color),
             ),
             _loading ? _buildLoader() : _buildList(),
           ],

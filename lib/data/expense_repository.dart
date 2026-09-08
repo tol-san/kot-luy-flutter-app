@@ -183,7 +183,7 @@ class ExpenseRepository {
     }).toList();
   }
 
-  Future<ExpenseCategory> addCategory(String label, {Color? color}) async {
+  Future<ExpenseCategory> addCategory(String label) async {
     final clean = label.trim();
     if (clean.isEmpty) throw ArgumentError('ឈ្មោះមុខចំណាយមិនអាចទទេបានទេ');
     final current = await getCategories(includeArchived: true);
@@ -194,10 +194,8 @@ class ExpenseRepository {
       throw ArgumentError('មុខចំណាយនេះមានរួចហើយ។ បើបានលាក់ សូមបង្ហាញវាឡើងវិញ។');
     }
     final customCount = current.where((c) => c.isCustom).length;
-    final selectedColor =
-        color ??
-        ExpenseCategory.autoColors[(customCount + 5) %
-            ExpenseCategory.autoColors.length];
+    final selectedColor = ExpenseCategory
+        .autoColors[(customCount + 5) % ExpenseCategory.autoColors.length];
     final id = 'custom_${DateTime.now().millisecondsSinceEpoch}';
     final nextOrder = current.length;
 

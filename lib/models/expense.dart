@@ -71,20 +71,14 @@ class ExpenseCategory {
     coffee,
   ];
 
-  static const List<Color> autoColors = [
-    Color(0xFFE08D46), // orange
-    Color(0xFF658B62), // sage green
-    Color(0xFF8B6B55), // warm brown
-    Color(0xFF5C8395), // slate blue
-    Color(0xFFAF805D), // caramel
-    Color(0xFF8B80A7), // lavender
-    Color(0xFFC26D6D), // coral
-    Color(0xFF4C8D7B), // teal
-    Color(0xFF8A8454), // olive
-    Color(0xFF766FA4), // violet
-    Color(0xFFB57C48), // amber
-    Color(0xFF587D9D), // steel blue
-  ];
+  /// Fifty evenly spaced hues with matching saturation and lightness.
+  /// This keeps custom category colours varied but visually consistent.
+  static final List<Color> autoColors = List.unmodifiable(
+    List.generate(
+      50,
+      (index) => HSLColor.fromAHSL(1, index * 360 / 50, 0.42, 0.42).toColor(),
+    ),
+  );
 
   static Color autoBackground(Color color) {
     return Color.alphaBlend(color.withValues(alpha: 0.12), Colors.white);
