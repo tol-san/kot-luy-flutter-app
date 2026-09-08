@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:kot_luy/data/expense_repository.dart';
 import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/theme.dart';
+import 'package:kot_luy/widgets/category_color_picker.dart';
 import 'package:kot_luy/widgets/category_input_row.dart';
 import 'package:kot_luy/widgets/category_list_item.dart';
 
@@ -60,6 +61,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
   List<ExpenseCategory> _archivedCategories = [];
   bool _loading = true;
   bool _adding = false;
+  Color _selectedColor = ExpenseCategory.autoColors[5];
   String? _highlightedCategoryId;
   Timer? _highlightTimer;
 
@@ -142,7 +144,10 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
 
     setState(() => _adding = true);
     try {
-      final newCat = await widget.repository.addCategory(cleanName);
+      final newCat = await widget.repository.addCategory(
+        cleanName,
+        color: _selectedColor,
+      );
       _categories.add(newCat);
       widget.onCategoriesChanged?.call(_categories);
       if (mounted) {
@@ -286,6 +291,11 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
               existingCategories: _categories,
               onSelectExisting: _selectCategory,
               isAdding: _adding,
+            ),
+            CategoryColorPicker(
+              colors: ExpenseCategory.autoColors,
+              selectedColor: _selectedColor,
+              onChanged: (color) => setState(() => _selectedColor = color),
             ),
             _loading ? _buildLoader() : _buildList(),
           ],
