@@ -40,6 +40,8 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
   List<DriveBackupItem> _remoteBackups = [];
   bool _loading = true;
   bool _actionInProgress = false;
+  bool _backingUp = false;
+  String? _restoringId;
   String? _errorMessage;
 
   @override
@@ -161,6 +163,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
   Future<void> _manualBackup() async {
     setState(() {
       _actionInProgress = true;
+      _backingUp = true;
       _errorMessage = null;
     });
     try {
@@ -171,6 +174,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
           _status = status;
           _remoteBackups = list;
           _actionInProgress = false;
+          _backingUp = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -184,6 +188,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
         setState(() {
           _actionInProgress = false;
           _errorMessage = _parseError(e.toString());
+          _backingUp = false;
         });
       }
     }
@@ -260,10 +265,11 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
       ),
     );
 
-    if (confirm != true) return;
+    if (confirm != true || !mounted) return;
 
     setState(() {
       _actionInProgress = true;
+      _restoringId = item.id;
       _errorMessage = null;
     });
 
@@ -271,7 +277,10 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
       await _drive.restore(item.id, widget.repository.database);
       widget.onDataRestored?.call();
       if (mounted) {
-        setState(() => _actionInProgress = false);
+        setState(() {
+          _actionInProgress = false;
+          _restoringId = null;
+        });
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -285,6 +294,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
         setState(() {
           _actionInProgress = false;
           _errorMessage = 'ការស្ដារបរាជ័យ: $e';
+          _restoringId = null;
         });
       }
     }
@@ -529,9 +539,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
               color: const Color(0xFFEDF1E3),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: SvgPicture.asset(
-              'assets/illustrations/google_drive.svg',
-            ),
+            child: SvgPicture.asset('assets/illustrations/google_drive.svg'),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -584,11 +592,12 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
     );
   }
 
-  Widget _settingsCard(bool allowSim) => Container(
-    decoration: BoxDecoration(
-      color: Colors.white,
+  Widget _settingsCard(bool allowSim) => Material(
+    color: Colors.white,
+    clipBehavior: Clip.antiAlias,
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: line),
+      side: const BorderSide(color: line),
     ),
     child: Column(
       children: [
@@ -611,6 +620,8 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
           ),
           value: _status.automatic,
           activeThumbColor: green,
+          thumbColor: _lockedSwitchThumb,
+          trackColor: _lockedSwitchTrack,
           onChanged: _actionInProgress ? null : _toggleAutomatic,
         ),
         const Divider(height: 1, indent: 16, endIndent: 16),
@@ -635,11 +646,54 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
           ),
           value: allowSim,
           activeThumbColor: green,
+          thumbColor: _lockedSwitchThumb,
+          trackColor: _lockedSwitchTrack,
           onChanged: _actionInProgress ? null : _toggleSimData,
         ),
+        if (_actionInProgress)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+            child: Semantics(
+              liveRegion: true,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.lock_outline, size: 16, color: muted),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _backingUp
+                          ? 'អាចកែការកំណត់បានក្រោយបញ្ចប់ការបម្រុងទុក'
+                          : _restoringId != null
+                          ? 'អាចកែការកំណត់បានក្រោយបញ្ចប់ការស្ដារ'
+                          : 'សូមរង់ចាំបន្តិច មុនកែការកំណត់បន្ត',
+                      style: const TextStyle(fontSize: 12, color: muted),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     ),
   );
+
+  // Disabled is an interaction state, not a change to the saved ON/OFF value.
+  WidgetStateProperty<Color?> get _lockedSwitchThumb =>
+      WidgetStateProperty.resolveWith((states) {
+        if (!states.contains(WidgetState.disabled)) return null;
+        return states.contains(WidgetState.selected)
+            ? const Color(0xFF52735F)
+            : const Color(0xFF737873);
+      });
+
+  WidgetStateProperty<Color?> get _lockedSwitchTrack =>
+      WidgetStateProperty.resolveWith((states) {
+        if (!states.contains(WidgetState.disabled)) return null;
+        return states.contains(WidgetState.selected)
+            ? const Color(0xFFB8CDBF)
+            : const Color(0xFFE0E3DE);
+      });
 
   Widget _manualBackupCard() => Container(
     padding: const EdgeInsets.all(16),
@@ -676,13 +730,15 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
             FilledButton.icon(
               onPressed: _actionInProgress ? null : _manualBackup,
               style: FilledButton.styleFrom(
+                disabledBackgroundColor: _backingUp ? green : null,
+                disabledForegroundColor: _backingUp ? Colors.white : null,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 10,
                 ),
                 minimumSize: const Size(0, 42),
               ),
-              icon: _actionInProgress
+              icon: _backingUp
                   ? const SizedBox(
                       width: 16,
                       height: 16,
@@ -692,9 +748,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
                       ),
                     )
                   : const Icon(Icons.backup_rounded, size: 18),
-              label: Text(
-                _actionInProgress ? 'កំពុងដំណើរការ...' : 'បម្រុងទុកឥឡូវនេះ',
-              ),
+              label: Text(_backingUp ? 'កំពុងបម្រុងទុក…' : 'បម្រុងទុកឥឡូវនេះ'),
             ),
           ],
         ),
@@ -806,23 +860,35 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
             ],
           ),
         ),
-        OutlinedButton(
+        OutlinedButton.icon(
           onPressed: _actionInProgress ? null : () => _restore(item),
           style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: green),
+            foregroundColor: green,
+            disabledForegroundColor: _restoringId == item.id ? green : muted,
+            side: BorderSide(
+              color: _actionInProgress && _restoringId != item.id
+                  ? line
+                  : green,
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             minimumSize: const Size(0, 34),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          child: const Text(
-            'ស្ដារ',
-            style: TextStyle(
-              color: green,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
+          icon: _restoringId == item.id
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: green,
+                  ),
+                )
+              : null,
+          label: Text(
+            _restoringId == item.id ? 'កំពុងស្ដារ…' : 'ស្ដារ',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ),
       ],
