@@ -49,7 +49,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
 
   void _warnFutureDateTime() {
     setState(() {
-      _dateTimeError = 'មិនអាចកត់ចំណាយនៅពេលអនាគតបានទេ។ សូមជ្រើសរើសកាលបរិច្ឆេទ និងម៉ោងដែលបានកន្លងផុត ឬពេលបច្ចុប្បន្ន។';
+      _dateTimeError = 'សូមជ្រើសរើសថ្ងៃ និងម៉ោងបច្ចុប្បន្ន ឬកន្លងមក។';
     });
   }
 

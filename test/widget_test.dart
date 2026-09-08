@@ -155,6 +155,7 @@ void main() {
     await tester.tap(find.text('មុខចំណាយដែលបានលាក់ (1)'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('បង្ហាញឡើងវិញ'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('បង្ហាញឡើងវិញ'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('select_category_coffee')), findsOneWidget);
@@ -320,6 +321,13 @@ void main() {
         );
       }
       await mount(tester, repo);
+      await tester.runAsync(() async {
+        await precacheImage(
+          const AssetImage('assets/logo.png'),
+          tester.element(find.byType(Scaffold).first),
+        );
+      });
+      await tester.pumpAndSettle();
       await expectLater(
         find.byType(MaterialApp),
         matchesGoldenFile('previews/home.png'),

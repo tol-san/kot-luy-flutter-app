@@ -33,6 +33,9 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Generated golden-test failure reports (keep test/previews baselines tracked)
+/test/failures/
+
 # Symbolication related
 app.*.symbols
 
