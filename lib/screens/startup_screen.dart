@@ -3,9 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../data/expense_repository.dart';
+import 'package:kot_luy/data/expense_repository.dart';
 
-import 'home_screen.dart';
+import 'package:kot_luy/screens/home_screen.dart';
 
 class StartupScreen extends StatefulWidget {
   const StartupScreen({

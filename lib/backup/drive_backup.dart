@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 
-import 'backup_snapshot.dart';
+import 'package:kot_luy/backup/backup_snapshot.dart';
 
 /// Represents the current Google Drive backup status and settings.
 class DriveBackupStatus {

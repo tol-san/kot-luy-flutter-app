@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-import 'data/expense_repository.dart';
-import 'screens/home_screen.dart';
-import 'screens/startup_screen.dart';
-import 'theme.dart';
+import 'package:kot_luy/data/expense_repository.dart';
+import 'package:kot_luy/screens/home_screen.dart';
+import 'package:kot_luy/screens/startup_screen.dart';
+import 'package:kot_luy/theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

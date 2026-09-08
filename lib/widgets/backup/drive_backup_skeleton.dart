@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../theme.dart';
+import 'package:kot_luy/theme.dart';
 
 /// Full shimmering skeleton layout matching the Google Drive backup modal.
 class DriveBackupSkeleton extends StatefulWidget {

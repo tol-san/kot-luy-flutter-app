@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../theme.dart';
+import 'package:kot_luy/theme.dart';
 
 /// Card providing toggle switches for automatic silent backup and SIM/Wi-Fi selection.
 class DriveSettingsCard extends StatelessWidget {

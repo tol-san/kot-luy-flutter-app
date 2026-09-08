@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../data/expense_repository.dart';
-import '../models/expense.dart';
-import '../theme.dart';
-import 'expense_form.dart';
+import 'package:kot_luy/data/expense_repository.dart';
+import 'package:kot_luy/models/expense.dart';
+import 'package:kot_luy/screens/expense_form.dart';
+import 'package:kot_luy/theme.dart';
 
 class DetailScreen extends StatefulWidget {
   const DetailScreen({

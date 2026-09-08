@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../data/expense_repository.dart';
-import '../models/expense.dart';
-import '../theme.dart';
-import '../widgets/category_input_row.dart';
-import '../widgets/category_list_item.dart';
+import 'package:kot_luy/data/expense_repository.dart';
+import 'package:kot_luy/models/expense.dart';
+import 'package:kot_luy/theme.dart';
+import 'package:kot_luy/widgets/category_input_row.dart';
+import 'package:kot_luy/widgets/category_list_item.dart';
 
 // ---------------------------------------------------------------------------
 // Result type

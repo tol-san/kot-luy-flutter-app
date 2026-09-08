@@ -1,4 +1,4 @@
-import 'expense.dart';
+import 'package:kot_luy/models/expense.dart';
 
 enum ReportPeriodType {
   week('ប្រចាំសប្ដាហ៍'),

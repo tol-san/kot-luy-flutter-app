@@ -4,8 +4,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf_text_shaper/pdf_text_shaper.dart';
 
-import '../models/expense.dart';
-import '../models/report_period.dart';
+import 'package:kot_luy/models/expense.dart';
+import 'package:kot_luy/models/report_period.dart';
 
 class ExpensePdfService {
   static Future<Uint8List> _loadFontBytes(String path) async {

@@ -2,8 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../models/expense.dart';
-import '../theme.dart';
+import 'package:kot_luy/models/expense.dart';
+import 'package:kot_luy/theme.dart';
 
 class ExpenseChart extends StatelessWidget {
   const ExpenseChart({super.key, required this.expenses, this.size = 124});

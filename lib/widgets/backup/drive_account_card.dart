@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../backup/drive_backup.dart';
-import '../../theme.dart';
+import 'package:kot_luy/backup/drive_backup.dart';
+import 'package:kot_luy/theme.dart';
 
 /// Card showing current Google Drive account connection status and connect/disconnect actions.
 class DriveAccountCard extends StatelessWidget {

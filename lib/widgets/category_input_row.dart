@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/expense.dart';
-import '../theme.dart';
+import 'package:kot_luy/models/expense.dart';
+import 'package:kot_luy/theme.dart';
 
 /// A self-contained input row for adding a new category.
 ///

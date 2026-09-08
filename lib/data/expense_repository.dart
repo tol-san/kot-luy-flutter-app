@@ -6,8 +6,8 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
-import '../backup/drive_backup.dart';
-import '../models/expense.dart';
+import 'package:kot_luy/backup/drive_backup.dart';
+import 'package:kot_luy/models/expense.dart';
 
 class ExpenseRepository {
   ExpenseRepository(this.database);

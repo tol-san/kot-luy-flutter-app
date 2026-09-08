@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../backup/drive_formatters.dart';
-import '../../theme.dart';
+import 'package:kot_luy/backup/drive_formatters.dart';
+import 'package:kot_luy/theme.dart';
 
 /// Card providing a direct button to back up database to Google Drive immediately.
 class DriveManualBackupCard extends StatelessWidget {

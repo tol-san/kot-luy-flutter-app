@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../backup/drive_backup.dart';
-import '../../backup/drive_formatters.dart';
-import '../../theme.dart';
+import 'package:kot_luy/backup/drive_backup.dart';
+import 'package:kot_luy/backup/drive_formatters.dart';
+import 'package:kot_luy/theme.dart';
 
 /// Section showing list of remote Google Drive backups with refresh and restore actions.
 class DriveSnapshotsSection extends StatelessWidget {
