@@ -1,24 +1,17 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-class PdfDownloadResult {
-  const PdfDownloadResult({
-    required this.displayPath,
-    required this.openIdentifier,
-  });
+import 'package:kot_luy/pdf/desktop_pdf_file_handler.dart';
+import 'package:kot_luy/pdf/pdf_download_result.dart';
 
-  final String displayPath;
-  final String openIdentifier;
-}
+export 'package:kot_luy/pdf/pdf_download_result.dart';
 
 class PdfDownloader {
   static const MethodChannel _channel = MethodChannel('kot_luy/pdf_storage');
 
   @visibleForTesting
   static Future<PdfDownloadResult?> Function(Uint8List bytes, String filename)?
-      saveOverride;
+  saveOverride;
 
   @visibleForTesting
   static Future<bool> Function(String openIdentifier)? openOverride;
@@ -38,14 +31,11 @@ class PdfDownloader {
       return null;
     }
 
-    if (Platform.isAndroid) {
+    if (defaultTargetPlatform == TargetPlatform.android) {
       try {
         final res = await _channel.invokeMapMethod<String, dynamic>(
           'saveToDownloads',
-          {
-            'filename': filename,
-            'bytes': bytes,
-          },
+          {'filename': filename, 'bytes': bytes},
         );
         if (res != null) {
           final path = res['path'] as String? ?? 'Downloads/$filename';
@@ -62,29 +52,12 @@ class PdfDownloader {
       return null;
     }
 
-    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+    if (DesktopPdfFileHandler.supported) {
       try {
-        String? downloadsPath;
-        if (Platform.isWindows) {
-          final userProfile = Platform.environment['USERPROFILE'];
-          if (userProfile != null) {
-            downloadsPath = '$userProfile\\Downloads';
-          }
-        } else {
-          final home = Platform.environment['HOME'];
-          if (home != null) {
-            downloadsPath = '$home/Downloads';
-          }
-        }
-
-        if (downloadsPath != null && Directory(downloadsPath).existsSync()) {
-          final file = File('$downloadsPath${Platform.pathSeparator}$filename');
-          await file.writeAsBytes(bytes);
-          return PdfDownloadResult(
-            displayPath: file.path,
-            openIdentifier: file.path,
-          );
-        }
+        return await DesktopPdfFileHandler.saveToDownloads(
+          bytes: bytes,
+          filename: filename,
+        );
       } catch (e) {
         debugPrint('Desktop saveToDownloads error: $e');
         rethrow;
@@ -102,12 +75,11 @@ class PdfDownloader {
 
     if (kIsWeb) return false;
 
-    if (Platform.isAndroid) {
+    if (defaultTargetPlatform == TargetPlatform.android) {
       try {
-        final opened = await _channel.invokeMethod<bool>(
-          'openPdf',
-          {'uri': openIdentifier},
-        );
+        final opened = await _channel.invokeMethod<bool>('openPdf', {
+          'uri': openIdentifier,
+        });
         return opened ?? false;
       } catch (e) {
         debugPrint('Android openPdf error: $e');
@@ -115,32 +87,11 @@ class PdfDownloader {
       }
     }
 
-    if (Platform.isWindows) {
+    if (DesktopPdfFileHandler.supported) {
       try {
-        await Process.run('cmd', ['/c', 'start', '', openIdentifier]);
-        return true;
+        return await DesktopPdfFileHandler.open(openIdentifier);
       } catch (e) {
-        debugPrint('Windows openFile error: $e');
-        return false;
-      }
-    }
-
-    if (Platform.isMacOS) {
-      try {
-        await Process.run('open', [openIdentifier]);
-        return true;
-      } catch (e) {
-        debugPrint('macOS openFile error: $e');
-        return false;
-      }
-    }
-
-    if (Platform.isLinux) {
-      try {
-        await Process.run('xdg-open', [openIdentifier]);
-        return true;
-      } catch (e) {
-        debugPrint('Linux openFile error: $e');
+        debugPrint('Desktop openFile error: $e');
         return false;
       }
     }
