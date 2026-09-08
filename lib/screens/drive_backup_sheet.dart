@@ -650,30 +650,6 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
           trackColor: _lockedSwitchTrack,
           onChanged: _actionInProgress ? null : _toggleSimData,
         ),
-        if (_actionInProgress)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-            child: Semantics(
-              liveRegion: true,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.lock_outline, size: 16, color: muted),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _backingUp
-                          ? 'អាចកែការកំណត់បានក្រោយបញ្ចប់ការបម្រុងទុក'
-                          : _restoringId != null
-                          ? 'អាចកែការកំណត់បានក្រោយបញ្ចប់ការស្ដារ'
-                          : 'សូមរង់ចាំបន្តិច មុនកែការកំណត់បន្ត',
-                      style: const TextStyle(fontSize: 12, color: muted),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
       ],
     ),
   );

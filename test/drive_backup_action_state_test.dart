@@ -104,14 +104,6 @@ void main() {
             find.text(action == 'backup' ? 'កំពុងបម្រុងទុក…' : 'កំពុងស្ដារ…'),
             findsOneWidget,
           );
-          expect(
-            find.text(
-              action == 'backup'
-                  ? 'អាចកែការកំណត់បានក្រោយបញ្ចប់ការបម្រុងទុក'
-                  : 'អាចកែការកំណត់បានក្រោយបញ្ចប់ការស្ដារ',
-            ),
-            findsOneWidget,
-          );
           for (final toggle in tester.widgetList<SwitchListTile>(
             find.byType(SwitchListTile),
           )) {
