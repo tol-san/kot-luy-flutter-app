@@ -8,6 +8,68 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 void main() {
   sqfliteFfiInit();
   test(
+    'v4 colors migrate and remain stable after reorder and reopening',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'kot_luy_colors_',
+      );
+      final path = '${directory.path}/expenses.db';
+      var repo = await ExpenseRepository.open(
+        factory: databaseFactoryFfi,
+        path: path,
+      );
+      try {
+        for (var i = 0; i < 3; i++) {
+          await repo.database.insert('categories', {
+            'id': 'custom_$i',
+            'label': 'Category $i',
+            'color_value': 0xFF998844 + i,
+            'sort_order': i + 5,
+            'is_custom': 1,
+            'is_archived': i == 2 ? 1 : 0,
+          });
+        }
+        await repo.database.update('categories', {'color_value': 0xFF998844});
+        await repo.database.setVersion(4);
+        await repo.close();
+        repo = await ExpenseRepository.open(
+          factory: databaseFactoryFfi,
+          path: path,
+        );
+        final categories = await repo.getCategories(includeArchived: true);
+        expect(categories.map((c) => c.color.toARGB32()).toSet().length, 8);
+        expect(categories.first.color, ExpenseCategory.breakfast.color);
+        expect(categories.last.isArchived, isTrue);
+        final savedColors = {for (final c in categories) c.name: c.color};
+        await repo.reorderCategories(
+          categories.reversed.map((c) => c.name).toList(),
+        );
+        await repo.close();
+        repo = await ExpenseRepository.open(
+          factory: databaseFactoryFfi,
+          path: path,
+        );
+        expect({
+          for (final c in await repo.getCategories(includeArchived: true))
+            c.name: c.color,
+        }, savedColors);
+        await repo.deleteCategory('custom_0');
+        final added = await repo.addCategory('Replacement');
+        expect(added.color, savedColors['custom_0']);
+        expect(
+          (await repo.getCategories(includeArchived: true))
+              .map((c) => c.color.toARGB32())
+              .toSet()
+              .length,
+          8,
+        );
+      } finally {
+        await repo.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+  test(
     'legacy category repair runs once and reopening does no cleanup writes',
     () async {
       final directory = await Directory.systemTemp.createTemp(
@@ -47,7 +109,7 @@ void main() {
           factory: databaseFactoryFfi,
           path: path,
         );
-        expect(await repo.database.getVersion(), 4);
+        expect(await repo.database.getVersion(), 5);
         final expenses = await repo.all();
         expect(expenses.length, 2);
         expect(

@@ -24,7 +24,7 @@ class ExpenseRepository {
     final db = await dbFactory.openDatabase(
       location,
       options: OpenDatabaseOptions(
-        version: 4,
+        version: 5,
         onCreate: (db, version) async {
           await db.execute('''CREATE TABLE expenses (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,6 +56,9 @@ class ExpenseRepository {
               );
             }
           }
+          if (oldVersion < 5) {
+            await _refreshCategoryColors(db);
+          }
         },
       ),
     );
@@ -78,6 +81,26 @@ class ExpenseRepository {
       }, where: "category = 'other'");
     }
     await db.delete('categories', where: "id = 'other'");
+  }
+
+  static Future<void> _refreshCategoryColors(DatabaseExecutor db) async {
+    final rows = await db.query(
+      'categories',
+      orderBy: 'is_custom ASC, sort_order ASC, id ASC',
+    );
+    final defaults = {for (final c in ExpenseCategory.values) c.name: c.color};
+    final used = <Color>[];
+    for (final row in rows) {
+      final id = row['id'] as String;
+      final color = defaults[id] ?? ExpenseCategory.nextColor(used);
+      used.add(color);
+      await db.update(
+        'categories',
+        {'color_value': color.toARGB32()},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    }
   }
 
   static Future<void> _deduplicateCategories(DatabaseExecutor db) async {
@@ -157,12 +180,10 @@ class ExpenseRepository {
       await database.transaction(_deduplicateCategories);
       return getCategories(includeArchived: includeArchived);
     }
-    return rows.where((r) => includeArchived || r['is_archived'] != 1).map((r) {
+
+    final hasOutdatedColors = rows.any((r) {
       final id = r['id'] as String;
-      final label = r['label'] as String;
       final colorVal = r['color_value'] as int;
-      final isCustom = (r['is_custom'] as int? ?? 0) == 1;
-      final color = Color(colorVal);
       final defaultMatch = switch (id) {
         'breakfast' => ExpenseCategory.breakfast,
         'lunch' => ExpenseCategory.lunch,
@@ -171,6 +192,27 @@ class ExpenseRepository {
         'coffee' => ExpenseCategory.coffee,
         _ => null,
       };
+      return defaultMatch != null && colorVal != defaultMatch.color.toARGB32();
+    });
+    if (hasOutdatedColors) {
+      await _refreshCategoryColors(database);
+      return getCategories(includeArchived: includeArchived);
+    }
+
+    return rows.where((r) => includeArchived || r['is_archived'] != 1).map((r) {
+      final id = r['id'] as String;
+      final label = r['label'] as String;
+      final colorVal = r['color_value'] as int;
+      final isCustom = (r['is_custom'] as int? ?? 0) == 1;
+      final defaultMatch = switch (id) {
+        'breakfast' => ExpenseCategory.breakfast,
+        'lunch' => ExpenseCategory.lunch,
+        'dinner' => ExpenseCategory.dinner,
+        'fuel' => ExpenseCategory.fuel,
+        'coffee' => ExpenseCategory.coffee,
+        _ => null,
+      };
+      final color = defaultMatch?.color ?? Color(colorVal);
       return ExpenseCategory(
         name: id,
         label: label,
@@ -193,9 +235,9 @@ class ExpenseRepository {
     if (isDuplicate) {
       throw ArgumentError('មុខចំណាយនេះមានរួចហើយ។ បើបានលាក់ សូមបង្ហាញវាឡើងវិញ។');
     }
-    final customCount = current.where((c) => c.isCustom).length;
-    final selectedColor = ExpenseCategory
-        .autoColors[(customCount + 5) % ExpenseCategory.autoColors.length];
+    final selectedColor = ExpenseCategory.nextColor(
+      current.map((c) => c.color),
+    );
     final id = 'custom_${DateTime.now().millisecondsSinceEpoch}';
     final nextOrder = current.length;
 

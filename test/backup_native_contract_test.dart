@@ -13,7 +13,7 @@ void main() {
       sqfliteFfiInit();
       final directory = Directory('build/backup-contract')
         ..createSync(recursive: true);
-      for (final oldVersion in [0, 2, 3]) {
+      for (final oldVersion in [0, 2, 3, 4]) {
         final path = '${directory.absolute.path}/repository-$oldVersion.db';
         await databaseFactoryFfi.deleteDatabase(path);
         if (oldVersion != 0) {
@@ -27,6 +27,11 @@ void main() {
           await old.execute(
             "CREATE TABLE expenses (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, amount INTEGER NOT NULL, category TEXT NOT NULL, date INTEGER NOT NULL, note TEXT NOT NULL DEFAULT '')",
           );
+          if (oldVersion >= 4) {
+            await old.execute(
+              'ALTER TABLE categories ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0',
+            );
+          }
           await old.setVersion(oldVersion);
           await old.close();
         }

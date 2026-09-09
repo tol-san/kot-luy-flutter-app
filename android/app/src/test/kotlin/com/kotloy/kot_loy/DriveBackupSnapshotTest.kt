@@ -31,7 +31,7 @@ class DriveBackupSnapshotTest {
     @Test
     fun snapshotSupportsHistoricalSchemasAndLeavesLiveDatabaseWritable() {
         val context: android.app.Application = RuntimeEnvironment.getApplication()
-        for (version in 2..4) {
+        for (version in 2..5) {
             val path = context.getDatabasePath("snapshot-$version.db")
             path.parentFile!!.mkdirs()
             SQLiteDatabase.openOrCreateDatabase(path, null).use { live ->
@@ -62,7 +62,7 @@ class DriveBackupSnapshotTest {
     @Test
     fun snapshotReadsActualCurrentAndMigratedFlutterDatabases() {
         val context: android.app.Application = RuntimeEnvironment.getApplication()
-        for (oldVersion in listOf(0, 2, 3)) {
+        for (oldVersion in listOf(0, 2, 3, 4)) {
             val source = File("../../build/backup-contract/repository-$oldVersion.db")
             assertTrue("Run flutter test test/backup_native_contract_test.dart first", source.isFile)
             val path = context.getDatabasePath("actual-$oldVersion.db")

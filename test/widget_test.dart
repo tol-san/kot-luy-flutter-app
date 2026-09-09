@@ -69,8 +69,7 @@ class MemoryRepository implements ExpenseRepository {
       throw ArgumentError('មុខចំណាយនេះមានរួចហើយ');
     }
     final customCount = categories.where((c) => c.isCustom).length;
-    final color = ExpenseCategory
-        .autoColors[(customCount + 6) % ExpenseCategory.autoColors.length];
+    final color = ExpenseCategory.nextColor(categories.map((c) => c.color));
     final id = 'custom_${DateTime.now().millisecondsSinceEpoch}_$customCount';
     final cat = ExpenseCategory(
       name: id,

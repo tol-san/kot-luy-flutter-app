@@ -24,43 +24,43 @@ class ExpenseCategory {
     name: 'breakfast',
     label: 'បាយពេលព្រឹក',
     icon: Icons.wb_sunny_outlined,
-    color: Color(0xFFE08D46),
-    background: Color(0xFFF9EFE6),
+    color: Color(0xFF2563EB),
+    background: Color(0xFFE8EFFE),
   );
   static const lunch = ExpenseCategory(
     name: 'lunch',
     label: 'បាយថ្ងៃត្រង់',
     icon: Icons.restaurant_rounded,
-    color: Color(0xFF658B62),
-    background: Color(0xFFEAF0E1),
+    color: Color(0xFF16A34A),
+    background: Color(0xFFE7F5EC),
   );
   static const dinner = ExpenseCategory(
     name: 'dinner',
     label: 'បាយល្ងាច',
     icon: Icons.nights_stay_outlined,
-    color: Color(0xFF8B6B55),
-    background: Color(0xFFF1EAE4),
+    color: Color(0xFFDC2626),
+    background: Color(0xFFFCE8E8),
   );
   static const fuel = ExpenseCategory(
     name: 'fuel',
     label: 'ចាក់សាំង',
     icon: Icons.local_gas_station_rounded,
-    color: Color(0xFF5C8395),
-    background: Color(0xFFE4EEF2),
+    color: Color(0xFFEAB308),
+    background: Color(0xFFFEF7DC),
   );
   static const coffee = ExpenseCategory(
     name: 'coffee',
     label: 'កាហ្វេ',
     icon: Icons.local_cafe_outlined,
-    color: Color(0xFFAF805D),
-    background: Color(0xFFF3E8DD),
+    color: Color(0xFF9333EA),
+    background: Color(0xFFF3E9FD),
   );
   static const other = ExpenseCategory(
     name: 'other',
     label: 'ផ្សេងៗ',
     icon: Icons.more_horiz_rounded,
-    color: Color(0xFF8B80A7),
-    background: Color(0xFFEDE9F4),
+    color: Color(0xFF64748B),
+    background: Color(0xFFEEF1F5),
   );
 
   static const List<ExpenseCategory> values = [
@@ -71,14 +71,54 @@ class ExpenseCategory {
     coffee,
   ];
 
-  /// Fifty evenly spaced hues with matching saturation and lightness.
-  /// This keeps custom category colours varied but visually consistent.
-  static final List<Color> autoColors = List.unmodifiable(
-    List.generate(
-      50,
-      (index) => HSLColor.fromAHSL(1, index * 360 / 50, 0.42, 0.42).toColor(),
-    ),
-  );
+  /// 30 distinct colors spanning diverse hue families.
+  static const List<Color> autoColors = [
+    Color(0xFF2563EB), // 1. Blue (Breakfast)
+    Color(0xFF16A34A), // 2. Green (Lunch)
+    Color(0xFFDC2626), // 3. Red (Dinner)
+    Color(0xFFEAB308), // 4. Yellow (Fuel)
+    Color(0xFF9333EA), // 5. Purple (Coffee)
+    Color(0xFFEA580C), // 6. Orange
+    Color(0xFF0891B2), // 7. Cyan
+    Color(0xFFDB2777), // 8. Pink
+    Color(0xFF795548), // 9. Brown
+    Color(0xFF64748B), // 10. Slate
+    Color(0xFF65A30D), // 11. Lime
+    Color(0xFF0D9488), // 12. Teal
+    Color(0xFF4F46E5), // 13. Indigo
+    Color(0xFFE11D48), // 14. Rose
+    Color(0xFFD97706), // 15. Amber
+    Color(0xFF059669), // 16. Emerald
+    Color(0xFF7C3AED), // 17. Violet
+    Color(0xFF0284C7), // 18. Sky Blue
+    Color(0xFFF97316), // 19. Coral Orange
+    Color(0xFF84CC16), // 20. Chartreuse
+    Color(0xFF06B6D4), // 21. Turquoise
+    Color(0xFFA855F7), // 22. Lavender
+    Color(0xFFF43F5E), // 23. Crimson
+    Color(0xFF854D0E), // 24. Ochre
+    Color(0xFF475569), // 25. Charcoal Slate
+    Color(0xFF10B981), // 26. Mint
+    Color(0xFF3B82F6), // 27. Bright Blue
+    Color(0xFFC026D3), // 28. Fuchsia
+    Color(0xFFB45309), // 29. Bronze
+    Color(0xFF14B8A6), // 30. Aquamarine
+  ];
+
+  /// Use unused colors first, then reuse the least common color.
+  /// Include archived categories so restoring one keeps its assigned color.
+  static Color nextColor(Iterable<Color> usedColors) {
+    final counts = <int, int>{};
+    for (final color in usedColors) {
+      counts.update(color.toARGB32(), (count) => count + 1, ifAbsent: () => 1);
+    }
+    return autoColors.reduce(
+      (best, color) =>
+          (counts[color.toARGB32()] ?? 0) < (counts[best.toARGB32()] ?? 0)
+          ? color
+          : best,
+    );
+  }
 
   static Color autoBackground(Color color) {
     return Color.alphaBlend(color.withValues(alpha: 0.12), Colors.white);
