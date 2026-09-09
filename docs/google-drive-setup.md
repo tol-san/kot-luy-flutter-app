@@ -6,13 +6,13 @@ Verified in Google Cloud Console on 2026-09-06:
 - Google Drive API enabled.
 - Android OAuth client: `Kot Luy Android Test`.
 - Client package and SHA-1 match the current development APK.
-- Declared scope: `https://www.googleapis.com/auth/drive.file`.
+- Declared scope: `https://www.googleapis.com/auth/drive.appdata`.
 - Audience: External, publishing status: Testing.
 - Developer account added as a test user.
 
 Public client metadata is recorded in `config/google-drive.json`. This is configuration documentation, not a working Drive integration. No client secret or user access token is stored. An Android client ID must not be used as a web/server client ID.
 
-Each user must authorize their own Google account. Backups belong in that user's Drive under `Kot Luy Backups`; the developer's account is not the backup destination for other users.
+Each user must authorize their own Google account. Backups belong in that user's Drive Application Data folder (`appDataFolder`); the developer's account is not the backup destination for other users.
 
 ## Remaining work
 

@@ -31,7 +31,7 @@ class BackupFailure(val code: String) : Exception(code)
 /** No server secrets or OAuth tokens are persisted. Google Play services caches grants. */
 class DriveBackup(private val context: Context) {
     companion object {
-        const val SCOPE = "https://www.googleapis.com/auth/drive.file"
+        const val SCOPE = "https://www.googleapis.com/auth/drive.appdata"
         const val FORMAT = "kot_luy_backup"
         const val LIMIT = 20 * 1024 * 1024
         val lock = ReentrantLock()
@@ -187,14 +187,6 @@ class DriveBackup(private val context: Context) {
     private fun digest(bytes: ByteArray, algorithm: String) = MessageDigest.getInstance(algorithm)
         .digest(bytes).joinToString("") { "%02x".format(it.toInt() and 255) }
 
-    private fun folder(token: String): String {
-        val query = "trashed = false and mimeType = 'application/vnd.google-apps.folder' and appProperties has { key='kotLuyFolder' and value='1' }"
-        val files = json(token, "drive/v3/files?q=${enc(query)}&fields=files(id)&pageSize=100").getJSONArray("files")
-        if (files.length() > 0) return files.getJSONObject(0).getString("id")
-        return json(token, "drive/v3/files?fields=id", "POST", JSONObject()
-            .put("name", "Kot Luy Backups").put("mimeType", "application/vnd.google-apps.folder")
-            .put("appProperties", JSONObject().put("kotLuyFolder", "1"))).getString("id")
-    }
 
     private fun rows(db: SQLiteDatabase, table: String, order: String): JSONArray {
         val result = JSONArray()
@@ -254,7 +246,7 @@ class DriveBackup(private val context: Context) {
             val stamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(Date())
             val properties = JSONObject().put("format", FORMAT).put("device", device).put("state", "pending")
             val metadata = JSONObject().put("name", "Kot Luy $stamp ${device.take(8)}.json")
-                .put("mimeType", "text/plain").put("parents", JSONArray().put(folder(token)))
+                .put("mimeType", "text/plain").put("parents", JSONArray().put("appDataFolder"))
                 .put("description", "Kot Luy expense backup. Restore using Kot Luy. Do not edit.")
                 .put("appProperties", properties)
             val boundary = "kot_luy_${UUID.randomUUID()}"
@@ -264,11 +256,9 @@ class DriveBackup(private val context: Context) {
             val id = uploaded.getString("id")
             if (uploaded.optString("md5Checksum") != digest(bytes, "MD5")) throw BackupFailure("integrity")
             properties.put("state", "complete")
-            val sealed = json(token, "drive/v3/files/$id?fields=id,contentRestrictions,appProperties", "PATCH",
-                JSONObject().put("appProperties", properties).put("contentRestrictions", JSONArray().put(
-                    JSONObject().put("readOnly", true).put("ownerRestricted", true)
-                        .put("reason", "Kot Luy backup — restore from the app"))))
-            if (sealed.optJSONArray("contentRestrictions")?.optJSONObject(0)?.optBoolean("readOnly") != true) throw BackupFailure("lock")
+            val sealed = json(token, "drive/v3/files/$id?fields=id,appProperties", "PATCH",
+                JSONObject().put("appProperties", properties))
+            if (sealed.optJSONObject("appProperties")?.optString("state") != "complete") throw BackupFailure("lock")
             prefs.edit().putString("lastHash", contentHash).putLong("lastSuccess", System.currentTimeMillis())
                 .putInt("lastCount", data.getJSONArray("expenses").length()).remove("lastError").putBoolean("queued", false).apply()
             // Retain five verified snapshots per device; other devices are untouched.
@@ -287,7 +277,7 @@ class DriveBackup(private val context: Context) {
         val result = mutableListOf<JSONObject>()
         var page = ""
         do {
-            val response = json(token, "drive/v3/files?q=${enc(query)}&orderBy=createdTime%20desc&pageSize=100&fields=nextPageToken,files(id,name,createdTime,size,md5Checksum,appProperties)&pageToken=${enc(page)}")
+            val response = json(token, "drive/v3/files?spaces=appDataFolder&q=${enc(query)}&orderBy=createdTime%20desc&pageSize=100&fields=nextPageToken,files(id,name,createdTime,size,md5Checksum,appProperties)&pageToken=${enc(page)}")
             val files = response.getJSONArray("files")
             for (i in 0 until files.length()) result.add(files.getJSONObject(i))
             page = response.optString("nextPageToken")
