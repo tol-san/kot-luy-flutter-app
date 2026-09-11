@@ -3,6 +3,28 @@ import 'package:intl/intl.dart';
 
 class ExpenseCategory {
   static const maxLabelLength = 40;
+  static const emojiNotAllowedMessage = 'ឈ្មោះមុខចំណាយមិនអាចមាន emoji បានទេ';
+
+  static bool containsEmoji(String value) => value.runes.any(
+    (rune) =>
+        rune == 0x00A9 ||
+        rune == 0x00AE ||
+        rune == 0x200D ||
+        rune == 0x203C ||
+        rune == 0x2049 ||
+        rune == 0x20E3 ||
+        rune == 0x2122 ||
+        rune == 0x2139 ||
+        rune == 0x3030 ||
+        rune == 0x303D ||
+        rune == 0x3297 ||
+        rune == 0x3299 ||
+        rune == 0xFE0F ||
+        (rune >= 0x2300 && rune <= 0x23FF) ||
+        (rune >= 0x2600 && rune <= 0x27BF) ||
+        (rune >= 0x2B00 && rune <= 0x2BFF) ||
+        (rune >= 0x1F000 && rune <= 0x1FAFF),
+  );
 
   const ExpenseCategory({
     required this.name,

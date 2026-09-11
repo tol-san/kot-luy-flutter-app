@@ -495,7 +495,8 @@ class _RenameCategoryDialogState extends State<_RenameCategoryDialog> {
           item.name != widget.category.name &&
           item.label.trim().toLowerCase() == clean.toLowerCase(),
     );
-    final canSave = clean.isNotEmpty && !unchanged && !duplicate;
+    final hasEmoji = ExpenseCategory.containsEmoji(clean);
+    final canSave = clean.isNotEmpty && !unchanged && !duplicate && !hasEmoji;
 
     return AlertDialog(
       title: const Text('កែឈ្មោះមុខចំណាយ'),
@@ -508,7 +509,11 @@ class _RenameCategoryDialogState extends State<_RenameCategoryDialog> {
         onSubmitted: canSave ? (_) => Navigator.pop(context, clean) : null,
         decoration: InputDecoration(
           labelText: 'ឈ្មោះមុខចំណាយ',
-          errorText: duplicate ? 'មុខចំណាយនេះមានរួចហើយ' : null,
+          errorText: hasEmoji
+              ? ExpenseCategory.emojiNotAllowedMessage
+              : duplicate
+              ? 'មុខចំណាយនេះមានរួចហើយ'
+              : null,
         ),
       ),
       actions: [

@@ -63,6 +63,9 @@ class MemoryRepository implements ExpenseRepository {
   Future<ExpenseCategory> addCategory(String label) async {
     final clean = label.trim();
     if (clean.isEmpty) throw ArgumentError('ឈ្មោះមុខចំណាយមិនអាចទទេបានទេ');
+    if (ExpenseCategory.containsEmoji(clean)) {
+      throw ArgumentError(ExpenseCategory.emojiNotAllowedMessage);
+    }
     if (categories.any(
       (c) => c.label.trim().toLowerCase() == clean.toLowerCase(),
     )) {
@@ -87,7 +90,8 @@ class MemoryRepository implements ExpenseRepository {
   Future<void> renameCategory(String id, String label) async {
     final clean = label.trim();
     if (clean.isEmpty ||
-        clean.characters.length > ExpenseCategory.maxLabelLength) {
+        clean.characters.length > ExpenseCategory.maxLabelLength ||
+        ExpenseCategory.containsEmoji(clean)) {
       throw ArgumentError('ឈ្មោះមុខចំណាយមិនត្រឹមត្រូវ');
     }
     if (categories.any(
@@ -220,6 +224,19 @@ void main() {
     expect(find.text('កំណត់ចំណាំ'), findsNothing);
     expect(find.text('ជ្រើសរើស Icon'), findsNothing);
     expect(find.text('ជ្រើសរើសពណ៌'), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const Key('renameCategoryInput')),
+      '☕ ភេសជ្ជៈ',
+    );
+    await tester.pump();
+    expect(find.text(ExpenseCategory.emojiNotAllowedMessage), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('saveCategoryRename')))
+          .onPressed,
+      isNull,
+    );
 
     await tester.enterText(
       find.byKey(const Key('renameCategoryInput')),
@@ -428,10 +445,7 @@ void main() {
     );
     final rowPositions = tester
         .widgetList(visibleLegends)
-        .map(
-          (widget) =>
-              tester.getTopLeft(find.byKey(widget.key!)).dy.round(),
-        )
+        .map((widget) => tester.getTopLeft(find.byKey(widget.key!)).dy.round())
         .toSet();
     expect(rowPositions.length, lessThanOrEqualTo(2));
     expect(find.byKey(const Key('expandCategoriesButton')), findsOneWidget);
@@ -671,6 +685,20 @@ void main() {
       expect(
         categoryInput.controller!.text.length,
         ExpenseCategory.maxLabelLength,
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('addCategoryInput')),
+        '🍜 អាហារ',
+      );
+      await tester.pump();
+      expect(find.byKey(const Key('categoryEmojiError')), findsOneWidget);
+      expect(find.text(ExpenseCategory.emojiNotAllowedMessage), findsOneWidget);
+      expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('addCategoryButton')))
+            .onPressed,
+        isNull,
       );
 
       // Verify there is NO icon picker in the UI

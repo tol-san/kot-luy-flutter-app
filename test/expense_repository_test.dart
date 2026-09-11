@@ -7,6 +7,14 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
   sqfliteFfiInit();
+
+  test('category emoji validation handles compound emoji and Khmer text', () {
+    expect(ExpenseCategory.containsEmoji('បាយថ្ងៃត្រង់'), isFalse);
+    expect(ExpenseCategory.containsEmoji('🍜 អាហារ'), isTrue);
+    expect(ExpenseCategory.containsEmoji('❤️ សុខភាព'), isTrue);
+    expect(ExpenseCategory.containsEmoji('👨‍👩‍👧‍👦 គ្រួសារ'), isTrue);
+  });
+
   test(
     'v4 colors migrate and remain stable after reorder and reopening',
     () async {
@@ -281,6 +289,10 @@ void main() {
         expect(expense.category.label, 'ថ្លៃសិក្សា');
         expect(expense.title, 'ថ្លៃសិក្សា');
         await expectLater(
+          repo.renameCategory(category.name, '🍜 អាហារ'),
+          throwsArgumentError,
+        );
+        await expectLater(
           repo.renameCategory(category.name, ExpenseCategory.coffee.label),
           throwsArgumentError,
         );
@@ -392,6 +404,7 @@ void main() {
         repo.addCategory('x' * (ExpenseCategory.maxLabelLength + 1)),
         throwsArgumentError,
       );
+      await expectLater(repo.addCategory('☕ កាហ្វេ'), throwsArgumentError);
 
       // 8. Duplicate category rejected (case and trim insensitive)
       await expectLater(repo.addCategory('បាយថ្ងៃត្រង់'), throwsArgumentError);

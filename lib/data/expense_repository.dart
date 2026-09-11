@@ -233,6 +233,9 @@ class ExpenseRepository {
         'ឈ្មោះមុខចំណាយអាចមានអតិបរមា ${ExpenseCategory.maxLabelLength} តួអក្សរ',
       );
     }
+    if (ExpenseCategory.containsEmoji(clean)) {
+      throw ArgumentError(ExpenseCategory.emojiNotAllowedMessage);
+    }
     final current = await getCategories(includeArchived: true);
     final isDuplicate = current.any(
       (c) => c.label.trim().toLowerCase() == clean.toLowerCase(),
@@ -272,6 +275,9 @@ class ExpenseRepository {
       throw ArgumentError(
         'ឈ្មោះមុខចំណាយអាចមានអតិបរមា ${ExpenseCategory.maxLabelLength} តួអក្សរ',
       );
+    }
+    if (ExpenseCategory.containsEmoji(clean)) {
+      throw ArgumentError(ExpenseCategory.emojiNotAllowedMessage);
     }
     final current = await getCategories(includeArchived: true);
     final isDuplicate = current.any(

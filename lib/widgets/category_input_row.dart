@@ -74,7 +74,11 @@ class _CategoryInputRowState extends State<CategoryInputRow> {
 
   void _submit() {
     final text = _controller.text.trim();
-    if (widget.isAdding || text.isEmpty) return;
+    if (widget.isAdding ||
+        text.isEmpty ||
+        ExpenseCategory.containsEmoji(text)) {
+      return;
+    }
     final matching = _findExisting(text);
     if (matching != null) {
       widget.onSelectExisting?.call(matching);
@@ -106,6 +110,7 @@ class _CategoryInputRowState extends State<CategoryInputRow> {
   Widget build(BuildContext context) {
     final text = _controller.text.trim();
     final isDuplicate = _findExisting(text) != null;
+    final hasEmoji = ExpenseCategory.containsEmoji(text);
     final suggestions = _getSuggestions(text);
 
     return Padding(
@@ -185,7 +190,7 @@ class _CategoryInputRowState extends State<CategoryInputRow> {
                   height: 44,
                   child: FilledButton(
                     key: const Key('addCategoryButton'),
-                    onPressed: (widget.isAdding || isDuplicate)
+                    onPressed: (widget.isAdding || isDuplicate || hasEmoji)
                         ? null
                         : _submit,
                     style: FilledButton.styleFrom(
@@ -236,6 +241,21 @@ class _CategoryInputRowState extends State<CategoryInputRow> {
               ],
             ),
           ),
+          if (hasEmoji) ...[
+            const SizedBox(height: 6),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 2),
+              child: Text(
+                ExpenseCategory.emojiNotAllowedMessage,
+                key: Key('categoryEmojiError'),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFFAD5347),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
           if (suggestions.isNotEmpty) ...[
             const SizedBox(height: 8),
             const Padding(
