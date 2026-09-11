@@ -8,10 +8,12 @@ class HomeAppBar extends StatelessWidget {
     super.key,
     required this.onPdfExport,
     required this.onDriveBackup,
+    this.onReminderSettings,
   });
 
   final VoidCallback onPdfExport;
   final VoidCallback onDriveBackup;
+  final VoidCallback? onReminderSettings;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -24,6 +26,26 @@ class HomeAppBar extends StatelessWidget {
         semanticLabel: 'កត់លុយ',
       ),
       const Spacer(),
+      if (onReminderSettings != null) ...[
+        IconButton(
+          key: const Key('reminderSettingsButton'),
+          tooltip: 'ការរំលឹក',
+          onPressed: onReminderSettings,
+          icon: Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEDF1E3),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.notifications_none_rounded,
+              color: green,
+              size: 20,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+      ],
       IconButton(
         key: const Key('pdfExportHeaderButton'),
         tooltip: 'ទាញយករបាយការណ៍ PDF',

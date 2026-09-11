@@ -9,14 +9,17 @@ import 'package:kot_luy/screens/detail_screen.dart';
 import 'package:kot_luy/screens/drive_backup_sheet.dart';
 import 'package:kot_luy/screens/expense_form.dart';
 import 'package:kot_luy/screens/pdf_export_sheet.dart';
+import 'package:kot_luy/screens/reminder_settings_sheet.dart';
+import 'package:kot_luy/services/reminder_service.dart';
 import 'package:kot_luy/theme.dart';
 import 'package:kot_luy/widgets/expense_chart.dart';
 import 'package:kot_luy/widgets/home/home_app_bar.dart';
 import 'package:kot_luy/widgets/home/home_report_section.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.repository});
+  const HomeScreen({super.key, required this.repository, this.reminderService});
   final ExpenseRepository repository;
+  final ReminderService? reminderService;
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -38,12 +41,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.reminderService?.onOpenExpense = _add;
+    widget.reminderService?.onOpenSummary = _openSummary;
+    if (widget.reminderService?.takePendingOpenExpense() ?? false) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _add());
+    }
+    final pendingSummary = widget.reminderService?.takePendingSummary();
+    if (pendingSummary != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _openSummary(pendingSummary),
+      );
+    }
     _load();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.reminderService?.onOpenExpense = null;
+    widget.reminderService?.onOpenSummary = null;
     _searchController.dispose();
     super.dispose();
   }
@@ -59,6 +75,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         includeArchived: true,
       );
       final expenses = await widget.repository.all(categories: categories);
+      final now = clock.now();
+      try {
+        await widget.reminderService?.activateDefaultReminders();
+        await widget.reminderService?.syncSummaryAmounts(
+          weeklyAmount: expenses
+              .where(
+                (expense) => ExpensePeriod.week.contains(expense.date, now),
+              )
+              .fold(0, (sum, expense) => sum + expense.amount),
+          monthlyAmount: expenses
+              .where(
+                (expense) => ExpensePeriod.month.contains(expense.date, now),
+              )
+              .fold(0, (sum, expense) => sum + expense.amount),
+        );
+      } catch (_) {
+        // Reminder failures must never block access to expense data.
+      }
       if (mounted) {
         setState(() {
           _expenses = expenses;
@@ -75,6 +109,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         });
       }
     }
+  }
+
+  void _openSummary(ReminderKind kind) {
+    if (!mounted) return;
+    setState(() {
+      _reports = true;
+      _period = kind == ReminderKind.weekly
+          ? ExpensePeriod.week
+          : ExpensePeriod.month;
+      _isSelecting = false;
+      _selectedIds.clear();
+    });
   }
 
   List<Expense> get _inPeriod =>
@@ -287,6 +333,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               widget.repository,
                               onDataRestored: _load,
                             ),
+                            onReminderSettings: widget.reminderService == null
+                                ? null
+                                : () => ReminderSettingsSheet.show(
+                                    context,
+                                    reminderService: widget.reminderService!,
+                                  ),
                           ),
                           const SizedBox(height: 18),
                           Text(

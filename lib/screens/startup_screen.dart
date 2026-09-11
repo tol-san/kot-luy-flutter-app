@@ -6,14 +6,17 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:kot_luy/data/expense_repository.dart';
 
 import 'package:kot_luy/screens/home_screen.dart';
+import 'package:kot_luy/services/reminder_service.dart';
 
 class StartupScreen extends StatefulWidget {
   const StartupScreen({
     super.key,
     this.openRepository = ExpenseRepository.open,
+    this.reminderService,
   });
 
   final Future<ExpenseRepository> Function() openRepository;
+  final ReminderService? reminderService;
 
   @override
   State<StartupScreen> createState() => _StartupScreenState();
@@ -27,7 +30,12 @@ class _StartupScreenState extends State<StartupScreen> {
     future: _repository,
     builder: (context, snapshot) {
       // No timer or minimum splash duration: enter as soon as storage is ready.
-      if (snapshot.hasData) return HomeScreen(repository: snapshot.data!);
+      if (snapshot.hasData) {
+        return HomeScreen(
+          repository: snapshot.data!,
+          reminderService: widget.reminderService,
+        );
+      }
       return Scaffold(
         body: SafeArea(
           child: Center(
