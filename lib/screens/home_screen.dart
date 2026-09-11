@@ -596,41 +596,75 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       color: const Color(0xFFEDF1E3),
       borderRadius: BorderRadius.circular(28),
     ),
-    child: Row(
-      children: ExpensePeriod.values
-          .map(
-            (p) => Expanded(
-              child: Semantics(
-                selected: p == _period,
-                child: Material(
-                  color: _period == p ? Colors.white : Colors.transparent,
-                  borderRadius: BorderRadius.circular(24),
-                  child: InkWell(
+    child: Stack(
+      children: [
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedAlign(
+              key: const Key('periodPickerIndicator'),
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment(
+                -1 +
+                    (2 *
+                        ExpensePeriod.values.indexOf(_period) /
+                        (ExpensePeriod.values.length - 1)),
+                0,
+              ),
+              child: FractionallySizedBox(
+                widthFactor: 1 / ExpensePeriod.values.length,
+                heightFactor: 1,
+                child: DecoratedBox(
+                  key: const Key('periodPickerThumb'),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(24),
-                    onTap: () => setState(() {
-                      _period = p;
-                      _isSelecting = false;
-                      _selectedIds.clear();
-                    }),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        p.label,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          height: 1.5,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF145B32),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Row(
+          children: ExpensePeriod.values
+              .map(
+                (p) => Expanded(
+                  child: Semantics(
+                    selected: p == _period,
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(24),
+                      child: InkWell(
+                        key: Key('period_${p.name}'),
+                        borderRadius: BorderRadius.circular(24),
+                        onTap: p == _period
+                            ? null
+                            : () => setState(() {
+                                _period = p;
+                                _isSelecting = false;
+                                _selectedIds.clear();
+                              }),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            p.label,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              height: 1.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF145B32),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          )
-          .toList(),
+              )
+              .toList(),
+        ),
+      ],
     ),
   );
   Widget _summary() {

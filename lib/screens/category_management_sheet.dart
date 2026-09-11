@@ -167,6 +167,34 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
     }
   }
 
+  Future<void> _renameCategory(ExpenseCategory category) async {
+    final renamed = await showDialog<String>(
+      context: context,
+      builder: (_) => _RenameCategoryDialog(
+        category: category,
+        categories: [..._categories, ..._archivedCategories],
+      ),
+    );
+    if (renamed == null || !mounted) return;
+
+    try {
+      await widget.repository.renameCategory(category.name, renamed);
+      await _loadCategories();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is ArgumentError && error.message != null
+                ? error.message.toString()
+                : 'មិនអាចកែឈ្មោះមុខចំណាយបានទេ សូមព្យាយាមម្ដងទៀត',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _deleteCategory(ExpenseCategory category) async {
     if (_categories.length <= 1) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -418,8 +446,82 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
         index: index,
         isHighlighted: _categories[index].name == _highlightedCategoryId,
         onSelect: _adding ? null : () => _selectCategory(_categories[index]),
+        onRename: () => _renameCategory(_categories[index]),
         onDelete: () => _deleteCategory(_categories[index]),
       ),
     ),
   );
+}
+
+class _RenameCategoryDialog extends StatefulWidget {
+  const _RenameCategoryDialog({
+    required this.category,
+    required this.categories,
+  });
+
+  final ExpenseCategory category;
+  final List<ExpenseCategory> categories;
+
+  @override
+  State<_RenameCategoryDialog> createState() => _RenameCategoryDialogState();
+}
+
+class _RenameCategoryDialogState extends State<_RenameCategoryDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.category.label,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_rebuild);
+  }
+
+  void _rebuild() => setState(() {});
+
+  @override
+  void dispose() {
+    _controller.removeListener(_rebuild);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final clean = _controller.text.trim();
+    final unchanged = clean == widget.category.label;
+    final duplicate = widget.categories.any(
+      (item) =>
+          item.name != widget.category.name &&
+          item.label.trim().toLowerCase() == clean.toLowerCase(),
+    );
+    final canSave = clean.isNotEmpty && !unchanged && !duplicate;
+
+    return AlertDialog(
+      title: const Text('កែឈ្មោះមុខចំណាយ'),
+      content: TextField(
+        key: const Key('renameCategoryInput'),
+        controller: _controller,
+        autofocus: true,
+        maxLength: ExpenseCategory.maxLabelLength,
+        textInputAction: TextInputAction.done,
+        onSubmitted: canSave ? (_) => Navigator.pop(context, clean) : null,
+        decoration: InputDecoration(
+          labelText: 'ឈ្មោះមុខចំណាយ',
+          errorText: duplicate ? 'មុខចំណាយនេះមានរួចហើយ' : null,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('បោះបង់'),
+        ),
+        FilledButton(
+          key: const Key('saveCategoryRename'),
+          onPressed: canSave ? () => Navigator.pop(context, clean) : null,
+          child: const Text('រក្សាទុក'),
+        ),
+      ],
+    );
+  }
 }

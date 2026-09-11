@@ -265,6 +265,50 @@ class ExpenseRepository {
     );
   }
 
+  Future<void> renameCategory(String id, String label) async {
+    final clean = label.trim();
+    if (clean.isEmpty) throw ArgumentError('ឈ្មោះមុខចំណាយមិនអាចទទេបានទេ');
+    if (clean.characters.length > ExpenseCategory.maxLabelLength) {
+      throw ArgumentError(
+        'ឈ្មោះមុខចំណាយអាចមានអតិបរមា ${ExpenseCategory.maxLabelLength} តួអក្សរ',
+      );
+    }
+    final current = await getCategories(includeArchived: true);
+    final isDuplicate = current.any(
+      (category) =>
+          category.name != id &&
+          category.label.trim().toLowerCase() == clean.toLowerCase(),
+    );
+    if (isDuplicate) {
+      throw ArgumentError('មុខចំណាយនេះមានរួចហើយ។');
+    }
+    ExpenseCategory? target;
+    for (final category in current) {
+      if (category.name == id) {
+        target = category;
+        break;
+      }
+    }
+    if (target == null) throw StateError('មុខចំណាយនេះលែងមានទៀតហើយ');
+    await database.transaction((txn) async {
+      await txn.update(
+        'categories',
+        {'label': clean},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      // Current records use the category label as their title. Preserve any
+      // legacy custom titles by changing only exact matches.
+      await txn.update(
+        'expenses',
+        {'title': clean},
+        where: 'category = ? AND title = ?',
+        whereArgs: [id, target!.label],
+      );
+    });
+    unawaited(DriveBackup.dataChanged(database.path));
+  }
+
   Future<void> deleteCategory(String id) async {
     await database.transaction((txn) async {
       final usage = await txn.query(

@@ -248,6 +248,49 @@ void main() {
     },
   );
 
+  test(
+    'renaming a category keeps its id and updates matching expenses',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'kot_luy_rename_category_',
+      );
+      final path = '${directory.path}/expenses.db';
+      final repo = await ExpenseRepository.open(
+        factory: databaseFactoryFfi,
+        path: path,
+      );
+      try {
+        final category = await repo.addCategory('ថ្លៃសាលា');
+        await repo.save(
+          Expense(
+            title: category.label,
+            amount: 50000,
+            category: category,
+            date: DateTime(2026, 9, 11),
+          ),
+        );
+
+        await repo.renameCategory(category.name, 'ថ្លៃសិក្សា');
+
+        final renamed = (await repo.getCategories()).singleWhere(
+          (item) => item.name == category.name,
+        );
+        final expense = (await repo.all()).single;
+        expect(renamed.label, 'ថ្លៃសិក្សា');
+        expect(expense.category.name, category.name);
+        expect(expense.category.label, 'ថ្លៃសិក្សា');
+        expect(expense.title, 'ថ្លៃសិក្សា');
+        await expectLater(
+          repo.renameCategory(category.name, ExpenseCategory.coffee.label),
+          throwsArgumentError,
+        );
+      } finally {
+        await repo.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+
   test('categories seed defaults, create custom with auto color, reorder and delete', () async {
     final directory = await Directory.systemTemp.createTemp(
       'kot_luy_cat_test_',

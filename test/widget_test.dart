@@ -84,6 +84,46 @@ class MemoryRepository implements ExpenseRepository {
   }
 
   @override
+  Future<void> renameCategory(String id, String label) async {
+    final clean = label.trim();
+    if (clean.isEmpty ||
+        clean.characters.length > ExpenseCategory.maxLabelLength) {
+      throw ArgumentError('ឈ្មោះមុខចំណាយមិនត្រឹមត្រូវ');
+    }
+    if (categories.any(
+      (category) =>
+          category.name != id &&
+          category.label.trim().toLowerCase() == clean.toLowerCase(),
+    )) {
+      throw ArgumentError('មុខចំណាយនេះមានរួចហើយ');
+    }
+    final index = categories.indexWhere((category) => category.name == id);
+    if (index < 0) throw StateError('មុខចំណាយនេះលែងមានទៀតហើយ');
+    final current = categories[index];
+    categories[index] = ExpenseCategory(
+      name: current.name,
+      label: clean,
+      icon: current.icon,
+      color: current.color,
+      background: current.background,
+      isCustom: current.isCustom,
+      isArchived: current.isArchived,
+    );
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].category.name != id) continue;
+      final expense = items[i];
+      items[i] = Expense(
+        id: expense.id,
+        title: clean,
+        amount: expense.amount,
+        category: categories[index],
+        date: expense.date,
+        note: expense.note,
+      );
+    }
+  }
+
+  @override
   Future<void> deleteCategory(String id) async {
     if (await categoryHasExpenses(id)) {
       archivedIds.add(id);
@@ -141,7 +181,7 @@ void main() {
         )
         .first;
     await tester.tap(
-      find.descendant(of: row, matching: find.byType(IconButton)),
+      find.descendant(of: row, matching: find.byType(IconButton)).last,
     );
     await tester.pumpAndSettle();
     expect(find.text('លាក់មុខចំណាយនេះ?'), findsOneWidget);
@@ -159,6 +199,41 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('select_category_coffee')), findsOneWidget);
     expect(repo.archivedIds, isEmpty);
+  });
+
+  testWidgets('category name can be edited without extra fields', (
+    tester,
+  ) async {
+    final repo = MemoryRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: CategoryManagementSheet(repository: repo)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('rename_category_coffee')));
+    await tester.pumpAndSettle();
+    expect(find.text('កែឈ្មោះមុខចំណាយ'), findsOneWidget);
+    expect(find.byKey(const Key('renameCategoryInput')), findsOneWidget);
+    expect(find.byType(TextField), findsNWidgets(2));
+    expect(find.text('កំណត់ចំណាំ'), findsNothing);
+    expect(find.text('ជ្រើសរើស Icon'), findsNothing);
+    expect(find.text('ជ្រើសរើសពណ៌'), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const Key('renameCategoryInput')),
+      'ភេសជ្ជៈ',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('saveCategoryRename')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ភេសជ្ជៈ'), findsOneWidget);
+    expect(
+      repo.categories.singleWhere((item) => item.name == 'coffee').label,
+      'ភេសជ្ជៈ',
+    );
   });
 
   testWidgets(
@@ -283,7 +358,15 @@ void main() {
       await tester.ensureVisible(find.byKey(const Key('saveExpense')));
       await tester.tap(find.byKey(const Key('saveExpense')));
       await tester.pumpAndSettle();
-      expect(find.text('15,000 ៛'), findsOneWidget);
+      expect(find.text('ចំណាយលម្អិត'), findsNothing);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('totalAmount'))).data,
+        '15,000 ៛',
+      );
+      await tester.ensureVisible(find.byKey(Key('expense_item_$singleId')));
+      await tester.tap(find.byKey(Key('expense_item_$singleId')));
+      await tester.pumpAndSettle();
+      expect(find.text('ចំណាយលម្អិត'), findsOneWidget);
       await tester.ensureVisible(find.text('លុបចំណាយ'));
       await tester.tap(find.text('លុបចំណាយ'));
       await tester.pumpAndSettle();
@@ -297,6 +380,27 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('period picker indicator slides smoothly between tabs', (
+    tester,
+  ) async {
+    await mount(tester, MemoryRepository());
+    final thumb = find.byKey(const Key('periodPickerThumb'));
+    final initialX = tester.getTopLeft(thumb).dx;
+
+    await tester.tap(find.byKey(const Key('period_today')));
+    await tester.pump();
+    expect(tester.getTopLeft(thumb).dx, initialX);
+
+    await tester.pump(const Duration(milliseconds: 110));
+    final midwayX = tester.getTopLeft(thumb).dx;
+    expect(midwayX, lessThan(initialX));
+
+    await tester.pump(const Duration(milliseconds: 110));
+    final finalX = tester.getTopLeft(thumb).dx;
+    expect(finalX, lessThan(midwayX));
+  });
+
   testWidgets('mobile screens render with sample data', (tester) async {
     await withClock(Clock.fixed(DateTime(2026, 9, 6, 12)), () async {
       final repo = MemoryRepository();

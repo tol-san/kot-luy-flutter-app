@@ -12,6 +12,7 @@ class CategoryListItem extends StatelessWidget {
     super.key,
     required this.category,
     required this.index,
+    required this.onRename,
     required this.onDelete,
     this.onSelect,
     this.isHighlighted = false,
@@ -19,6 +20,7 @@ class CategoryListItem extends StatelessWidget {
 
   final ExpenseCategory category;
   final int index;
+  final VoidCallback onRename;
   final VoidCallback onDelete;
   final VoidCallback? onSelect;
   final bool isHighlighted;
@@ -83,6 +85,12 @@ class CategoryListItem extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+          IconButton(
+            key: Key('rename_category_${category.name}'),
+            tooltip: 'កែឈ្មោះមុខចំណាយ',
+            icon: const Icon(Icons.edit_outlined, color: green, size: 20),
+            onPressed: onRename,
           ),
           IconButton(
             tooltip: 'លាក់ ឬលុបមុខចំណាយនេះ',

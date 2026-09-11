@@ -19,7 +19,7 @@ class DetailScreen extends StatefulWidget {
 }
 
 class _DetailScreenState extends State<DetailScreen> {
-  late Expense _expense = widget.expense;
+  late final Expense _expense = widget.expense;
   bool _deleting = false;
   Future<void> _edit() async {
     final saved = await showExpenseForm(
@@ -28,14 +28,7 @@ class _DetailScreenState extends State<DetailScreen> {
       expense: _expense,
     );
     if (saved != true || !mounted) return;
-    try {
-      final all = await widget.repository.all();
-      if (mounted) {
-        setState(() => _expense = all.firstWhere((e) => e.id == _expense.id));
-      }
-    } catch (_) {
-      if (mounted) Navigator.pop(context);
-    }
+    Navigator.pop(context);
   }
 
   Future<void> _delete() async {
