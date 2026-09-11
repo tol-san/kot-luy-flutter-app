@@ -228,6 +228,11 @@ class ExpenseRepository {
   Future<ExpenseCategory> addCategory(String label) async {
     final clean = label.trim();
     if (clean.isEmpty) throw ArgumentError('ឈ្មោះមុខចំណាយមិនអាចទទេបានទេ');
+    if (clean.characters.length > ExpenseCategory.maxLabelLength) {
+      throw ArgumentError(
+        'ឈ្មោះមុខចំណាយអាចមានអតិបរមា ${ExpenseCategory.maxLabelLength} តួអក្សរ',
+      );
+    }
     final current = await getCategories(includeArchived: true);
     final isDuplicate = current.any(
       (c) => c.label.trim().toLowerCase() == clean.toLowerCase(),

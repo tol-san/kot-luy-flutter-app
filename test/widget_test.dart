@@ -510,6 +510,20 @@ void main() {
       expect(find.byKey(const Key('addCategoryInput')), findsOneWidget);
       expect(find.byKey(const Key('addCategoryButton')), findsOneWidget);
 
+      // Category names are capped before they reach the repository.
+      await tester.enterText(
+        find.byKey(const Key('addCategoryInput')),
+        'x' * (ExpenseCategory.maxLabelLength + 5),
+      );
+      await tester.pump();
+      final categoryInput = tester.widget<TextField>(
+        find.byKey(const Key('addCategoryInput')),
+      );
+      expect(
+        categoryInput.controller!.text.length,
+        ExpenseCategory.maxLabelLength,
+      );
+
       // Verify there is NO icon picker in the UI
       expect(find.text('ជ្រើសរើស Icon'), findsNothing);
       expect(find.text('Icon'), findsNothing);

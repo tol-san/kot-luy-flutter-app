@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/theme.dart';
@@ -137,6 +138,11 @@ class _CategoryInputRowState extends State<CategoryInputRow> {
                             key: const Key('addCategoryInput'),
                             controller: _controller,
                             focusNode: _focus,
+                            inputFormatters: [
+                              LengthLimitingTextInputFormatter(
+                                ExpenseCategory.maxLabelLength,
+                              ),
+                            ],
                             textInputAction: TextInputAction.done,
                             onSubmitted: (_) => _submit(),
                             style: const TextStyle(fontSize: 13, color: ink),
@@ -179,8 +185,9 @@ class _CategoryInputRowState extends State<CategoryInputRow> {
                   height: 44,
                   child: FilledButton(
                     key: const Key('addCategoryButton'),
-                    onPressed:
-                        (widget.isAdding || isDuplicate) ? null : _submit,
+                    onPressed: (widget.isAdding || isDuplicate)
+                        ? null
+                        : _submit,
                     style: FilledButton.styleFrom(
                       backgroundColor: green,
                       disabledBackgroundColor: const Color(0xFFE8E5DF),
@@ -203,27 +210,27 @@ class _CategoryInputRowState extends State<CategoryInputRow> {
                             ),
                           )
                         : (isDuplicate
-                            ? const Text(
-                                'មានរួចហើយ',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              )
-                            : const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.add_rounded, size: 16),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'បន្ថែម',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                              ? const Text(
+                                  'មានរួចហើយ',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                ],
-                              )),
+                                )
+                              : const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.add_rounded, size: 16),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'បន្ថែម',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                )),
                   ),
                 ),
               ],

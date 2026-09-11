@@ -89,6 +89,8 @@ class HomeReportSection extends StatelessWidget {
                     Expanded(
                       child: Text(
                         entry.key.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 13),
                       ),
                     ),

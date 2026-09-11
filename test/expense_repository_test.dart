@@ -345,6 +345,10 @@ void main() {
 
       // 7. Blank category name rejected
       await expectLater(repo.addCategory('   '), throwsArgumentError);
+      await expectLater(
+        repo.addCategory('x' * (ExpenseCategory.maxLabelLength + 1)),
+        throwsArgumentError,
+      );
 
       // 8. Duplicate category rejected (case and trim insensitive)
       await expectLater(repo.addCategory('បាយថ្ងៃត្រង់'), throwsArgumentError);

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class ExpenseCategory {
+  static const maxLabelLength = 40;
+
   const ExpenseCategory({
     required this.name,
     required this.label,
