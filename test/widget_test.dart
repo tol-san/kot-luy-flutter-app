@@ -16,8 +16,36 @@ class MemoryRepository implements ExpenseRepository {
   @override
   Database get database => throw UnsupportedError('Test double');
   @override
-  Future<List<Expense>> all({List<ExpenseCategory>? categories}) async =>
-      [...items]..sort((a, b) => b.date.compareTo(a.date));
+  Future<List<Expense>> all({
+    List<ExpenseCategory>? categories,
+    bool categoriesAreComplete = false,
+    DateTime? fromInclusive,
+    DateTime? toExclusive,
+  }) async =>
+      items
+          .where(
+            (expense) =>
+                (fromInclusive == null ||
+                    !expense.date.isBefore(fromInclusive)) &&
+                (toExclusive == null || expense.date.isBefore(toExclusive)),
+          )
+          .toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+
+  @override
+  Future<bool> hasAnyExpenses() async => items.isNotEmpty;
+
+  @override
+  Future<int> totalBetween(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async => items
+      .where(
+        (expense) =>
+            !expense.date.isBefore(fromInclusive) &&
+            expense.date.isBefore(toExclusive),
+      )
+      .fold<int>(0, (total, expense) => total + expense.amount);
   @override
   Future<void> save(Expense expense) async {
     final id = expense.id ?? items.fold(0, (a, e) => e.id! > a ? e.id! : a) + 1;

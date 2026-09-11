@@ -153,6 +153,51 @@ void main() {
     },
   );
   test(
+    'range reads and SQL totals use exclusive calendar boundaries',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('kot_luy_range_');
+      final repo = await ExpenseRepository.open(
+        factory: databaseFactoryFfi,
+        path: '${directory.path}/expenses.db',
+      );
+      try {
+        expect(await repo.hasAnyExpenses(), isFalse);
+        for (final entry in [
+          (date: DateTime(2026, 8, 31, 23, 59), amount: 100),
+          (date: DateTime(2026, 9, 1), amount: 200),
+          (date: DateTime(2026, 9, 30, 23, 59), amount: 300),
+          (date: DateTime(2026, 10, 1), amount: 400),
+        ]) {
+          await repo.save(
+            Expense(
+              title: 'ចំណាយ',
+              amount: entry.amount,
+              category: ExpenseCategory.lunch,
+              date: entry.date,
+            ),
+          );
+        }
+
+        final start = DateTime(2026, 9);
+        final end = DateTime(2026, 10);
+        final categories = await repo.getCategories(includeArchived: true);
+        final september = await repo.all(
+          categories: categories,
+          categoriesAreComplete: true,
+          fromInclusive: start,
+          toExclusive: end,
+        );
+
+        expect(await repo.hasAnyExpenses(), isTrue);
+        expect(september.map((expense) => expense.amount), [300, 200]);
+        expect(await repo.totalBetween(start, end), 500);
+      } finally {
+        await repo.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+  test(
     'SQLite persists Khmer records, exact riel amounts, edits and deletes',
     () async {
       final directory = await Directory.systemTemp.createTemp('kot_luy_test_');

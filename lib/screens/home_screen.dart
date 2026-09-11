@@ -37,6 +37,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _reports = false;
   bool _search = false;
   bool _isSelecting = false;
+  bool _hasAnyExpenses = false;
+  int _loadRequest = 0;
   final Set<int> _selectedIds = {};
   final _searchController = TextEditingController();
   @override
@@ -72,23 +74,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _load() async {
+    final request = ++_loadRequest;
     try {
+      final now = clock.now();
+      final range = _dateRange(_period, now);
       final categories = await widget.repository.getCategories(
         includeArchived: true,
       );
-      final expenses = await widget.repository.all(categories: categories);
+      final results = await Future.wait<Object>([
+        widget.repository.all(
+          categories: categories,
+          categoriesAreComplete: true,
+          fromInclusive: range.start,
+          toExclusive: range.end,
+        ),
+        widget.repository.hasAnyExpenses(),
+      ]);
+      if (request != _loadRequest) return;
+      final expenses = results[0] as List<Expense>;
+      final hasAnyExpenses = results[1] as bool;
       if (mounted) {
         setState(() {
           _expenses = expenses;
           _categories = categories;
+          _hasAnyExpenses = hasAnyExpenses;
           _loading = false;
           _error = false;
         });
       }
       // Expense data is usable now. Reminder initialization and native
       // scheduling continue independently so they cannot delay Home.
-      unawaited(_syncReminders(expenses));
+      unawaited(_syncReminders(now));
     } catch (_) {
+      if (request != _loadRequest) return;
       if (mounted) {
         setState(() {
           _error = true;
@@ -98,19 +116,49 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _syncReminders(List<Expense> expenses) async {
+  ({DateTime? start, DateTime? end}) _dateRange(
+    ExpensePeriod period,
+    DateTime now,
+  ) {
+    final day = DateTime(now.year, now.month, now.day);
+    return switch (period) {
+      ExpensePeriod.today => (
+        start: day,
+        end: day.add(const Duration(days: 1)),
+      ),
+      ExpensePeriod.week => (
+        start: day.subtract(Duration(days: day.weekday - 1)),
+        end: day.add(Duration(days: 8 - day.weekday)),
+      ),
+      ExpensePeriod.month => (
+        start: DateTime(now.year, now.month),
+        end: DateTime(now.year, now.month + 1),
+      ),
+      ExpensePeriod.all => (start: null, end: null),
+    };
+  }
+
+  Future<void> _syncReminders(DateTime now) async {
     final service = widget.reminderService;
     if (service == null) return;
-    final now = clock.now();
     try {
+      final day = DateTime(now.year, now.month, now.day);
+      final weekStart = day.subtract(Duration(days: day.weekday - 1));
+      final monthStart = DateTime(now.year, now.month);
+      final totals = await Future.wait([
+        widget.repository.totalBetween(
+          weekStart,
+          weekStart.add(const Duration(days: 7)),
+        ),
+        widget.repository.totalBetween(
+          monthStart,
+          DateTime(now.year, now.month + 1),
+        ),
+      ]);
       await service.activateDefaultReminders();
       await service.syncSummaryAmounts(
-        weeklyAmount: expenses
-            .where((expense) => ExpensePeriod.week.contains(expense.date, now))
-            .fold(0, (sum, expense) => sum + expense.amount),
-        monthlyAmount: expenses
-            .where((expense) => ExpensePeriod.month.contains(expense.date, now))
-            .fold(0, (sum, expense) => sum + expense.amount),
+        weeklyAmount: totals[0],
+        monthlyAmount: totals[1],
       );
     } catch (_) {
       // Reminder failures must never block access to expense data.
@@ -119,14 +167,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _openSummary(ReminderKind kind) {
     if (!mounted) return;
+    final period = kind == ReminderKind.weekly
+        ? ExpensePeriod.week
+        : ExpensePeriod.month;
     setState(() {
       _reports = true;
-      _period = kind == ReminderKind.weekly
-          ? ExpensePeriod.week
-          : ExpensePeriod.month;
+      _period = period;
+      _loading = true;
       _isSelecting = false;
       _selectedIds.clear();
     });
+    unawaited(_load());
+  }
+
+  void _selectPeriod(ExpensePeriod period) {
+    setState(() {
+      _period = period;
+      _loading = true;
+      _isSelecting = false;
+      _selectedIds.clear();
+    });
+    unawaited(_load());
   }
 
   List<Expense> get _inPeriod =>
@@ -370,7 +431,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           _summary(),
                           const SizedBox(height: 14),
                           if (!_reports)
-                            HomeCompanion(hasExpenses: _expenses.isNotEmpty),
+                            HomeCompanion(hasExpenses: _hasAnyExpenses),
                           const SizedBox(height: 15),
                           const Divider(height: 1),
                           const SizedBox(height: 15),
@@ -383,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 repository: widget.repository,
                               ),
                               companion: HomeCompanion(
-                                hasExpenses: _expenses.isNotEmpty,
+                                hasExpenses: _hasAnyExpenses,
                               ),
                             )
                           else ...[
@@ -694,13 +755,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: InkWell(
                         key: Key('period_${p.name}'),
                         borderRadius: BorderRadius.circular(24),
-                        onTap: p == _period
-                            ? null
-                            : () => setState(() {
-                                _period = p;
-                                _isSelecting = false;
-                                _selectedIds.clear();
-                              }),
+                        onTap: p == _period ? null : () => _selectPeriod(p),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Text(
@@ -1042,14 +1097,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 10),
               Text(
-                _expenses.isEmpty
+                !_hasAnyExpenses
                     ? 'ចាប់ផ្ដើមទំព័រថ្មីរបស់អ្នក'
                     : 'មិនមានចំណាយក្នុងជម្រើសនេះ',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 5),
               Text(
-                _expenses.isEmpty
+                !_hasAnyExpenses
                     ? 'ចុច «កត់ចំណាយ» ដើម្បីបន្ថែមចំណាយដំបូង។'
                     : 'សាកប្ដូររយៈពេល ឬពាក្យស្វែងរក។',
                 style: const TextStyle(color: muted, fontSize: 11),

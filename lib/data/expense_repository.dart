@@ -363,14 +363,49 @@ class ExpenseRepository {
     unawaited(DriveBackup.dataChanged(database.path));
   }
 
-  Future<List<Expense>> all({List<ExpenseCategory>? categories}) async {
-    // Always resolve historical metadata, even when the caller supplies active choices.
-    final resolvedCategories = await getCategories(includeArchived: true);
+  Future<List<Expense>> all({
+    List<ExpenseCategory>? categories,
+    bool categoriesAreComplete = false,
+    DateTime? fromInclusive,
+    DateTime? toExclusive,
+  }) async {
+    // Most callers need historical metadata, including archived categories. A
+    // caller that already loaded the complete list can explicitly reuse it.
+    final resolvedCategories = categoriesAreComplete && categories != null
+        ? categories
+        : await getCategories(includeArchived: true);
+    final clauses = <String>[];
+    final arguments = <Object>[];
+    if (fromInclusive != null) {
+      clauses.add('date >= ?');
+      arguments.add(fromInclusive.millisecondsSinceEpoch);
+    }
+    if (toExclusive != null) {
+      clauses.add('date < ?');
+      arguments.add(toExclusive.millisecondsSinceEpoch);
+    }
     final rows = await database.query(
       'expenses',
+      where: clauses.isEmpty ? null : clauses.join(' AND '),
+      whereArgs: arguments.isEmpty ? null : arguments,
       orderBy: 'date DESC, id DESC',
     );
     return rows.map((r) => Expense.fromMap(r, resolvedCategories)).toList();
+  }
+
+  Future<bool> hasAnyExpenses() async =>
+      (await database.query('expenses', columns: ['id'], limit: 1)).isNotEmpty;
+
+  Future<int> totalBetween(DateTime fromInclusive, DateTime toExclusive) async {
+    final rows = await database.rawQuery(
+      'SELECT COALESCE(SUM(amount), 0) AS total FROM expenses '
+      'WHERE date >= ? AND date < ?',
+      [
+        fromInclusive.millisecondsSinceEpoch,
+        toExclusive.millisecondsSinceEpoch,
+      ],
+    );
+    return (rows.single['total'] as num?)?.toInt() ?? 0;
   }
 
   Future<bool> categoryHasExpenses(String id) async => (await database.query(
