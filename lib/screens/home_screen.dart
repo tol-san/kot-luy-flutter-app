@@ -33,7 +33,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _search = false;
   bool _isSelecting = false;
   final Set<int> _selectedIds = {};
-  bool _expandedCategoryLegend = false;
   final _searchController = TextEditingController();
   @override
   void initState() {
@@ -86,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         (e) =>
             (_category == null || e.category == _category) &&
             (_query.isEmpty ||
-                e.title.toLowerCase().contains(_query) ||
+                e.category.label.toLowerCase().contains(_query) ||
                 e.note.toLowerCase().contains(_query)),
       )
       .toList();
@@ -682,6 +681,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     }
     return Container(
+      key: const Key('summaryCard'),
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -754,173 +754,208 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildCategoryLegend(List<ExpenseCategory> categories) {
-    Widget legendItem(ExpenseCategory c) => Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(color: c.color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 5),
-        Text(c.label, style: const TextStyle(fontSize: 10, color: muted)),
-      ],
-    );
+    return _buildNaturalCategoryLegend(categories);
+  }
 
-    if (_expandedCategoryLegend) {
-      return Wrap(
-        spacing: 16,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          ...categories.map(legendItem),
-          InkWell(
-            key: const Key('collapseCategoriesButton'),
-            borderRadius: BorderRadius.circular(6),
-            onTap: () => setState(() => _expandedCategoryLegend = false),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'បង្រួម',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: green,
-                    ),
-                  ),
-                  SizedBox(width: 2),
-                  Icon(Icons.expand_less_rounded, size: 13, color: green),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
+  Widget _buildNaturalCategoryLegend(List<ExpenseCategory> categories) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final totalWidth = constraints.maxWidth;
         const spacing = 16.0;
+        const runSpacing = 8.0;
+        final textDirection = Directionality.of(context);
+        final textScaler = MediaQuery.textScalerOf(context);
+        final inheritedStyle = DefaultTextStyle.of(context).style;
+        final labelStyle = inheritedStyle.merge(
+          const TextStyle(fontSize: 10, color: muted),
+        );
+        final moreStyle = inheritedStyle.merge(
+          const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: green,
+          ),
+        );
 
-        double measureWidth(String text) {
-          final tp = TextPainter(
-            text: TextSpan(text: text, style: const TextStyle(fontSize: 10)),
-            textDirection: TextDirection.ltr,
+        double textWidth(String text, TextStyle style) {
+          final painter = TextPainter(
+            text: TextSpan(text: text, style: style),
+            textDirection: textDirection,
+            textScaler: textScaler,
             maxLines: 1,
-          )..layout();
-          return 11.0 + tp.width;
+          )..layout(maxWidth: constraints.maxWidth);
+          return painter.width;
         }
 
-        double measureTextOnly(String text) {
-          final tp = TextPainter(
-            text: TextSpan(
-              text: text,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-            ),
-            textDirection: TextDirection.ltr,
-            maxLines: 1,
-          )..layout();
-          return tp.width + 4.0;
-        }
+        double itemWidth(ExpenseCategory category) =>
+            (11 + textWidth(category.label, labelStyle)).clamp(
+              0,
+              constraints.maxWidth,
+            );
 
-        final row1 = <ExpenseCategory>[];
-        final row2 = <ExpenseCategory>[];
-        int i = 0;
-        double r1Width = 0;
+        double moreWidth(int count) => (4 + textWidth('+$count ទៀត', moreStyle))
+            .clamp(0, constraints.maxWidth);
 
-        while (i < categories.length) {
-          final w = measureWidth(categories[i].label);
-          final needed = row1.isEmpty ? w : (w + spacing);
-          if (r1Width + needed <= totalWidth - 4) {
-            row1.add(categories[i]);
-            r1Width += needed;
-            i++;
-          } else {
-            break;
-          }
-        }
-
-        double remWidth = 0;
-        bool allRemainingFit = true;
-        for (int j = i; j < categories.length; j++) {
-          final w = measureWidth(categories[j].label);
-          final needed = (j == i) ? w : (w + spacing);
-          if (remWidth + needed <= totalWidth - 4) {
-            remWidth += needed;
-          } else {
-            allRemainingFit = false;
-            break;
-          }
-        }
-
-        if (allRemainingFit) {
-          while (i < categories.length) {
-            row2.add(categories[i]);
-            i++;
-          }
-        } else {
-          final moreReserve = measureTextOnly('+99 ទៀត') + spacing;
-          double r2Width = 0;
-          while (i < categories.length) {
-            final w = measureWidth(categories[i].label);
-            final needed = row2.isEmpty ? w : (w + spacing);
-            if (r2Width + needed + moreReserve <= totalWidth - 4) {
-              row2.add(categories[i]);
-              r2Width += needed;
-              i++;
+        bool fitsInTwoRuns(List<double> widths) {
+          var runs = 1;
+          var usedWidth = 0.0;
+          for (final width in widths) {
+            final needed = usedWidth == 0 ? width : spacing + width;
+            if (usedWidth + needed <= constraints.maxWidth + 0.01) {
+              usedWidth += needed;
             } else {
-              break;
+              runs++;
+              usedWidth = width;
+              if (runs > 2) return false;
             }
           }
+          return true;
         }
 
-        final remainingCount = categories.length - (row1.length + row2.length);
+        final visible = <ExpenseCategory>[];
+        for (var i = 0; i < categories.length; i++) {
+          final candidate = [...visible, categories[i]];
+          final remaining = categories.length - candidate.length;
+          final widths = candidate.map(itemWidth).toList();
+          if (remaining > 0) widths.add(moreWidth(remaining));
+          if (!fitsInTwoRuns(widths)) break;
+          visible.add(categories[i]);
+        }
+        final remainingCount = categories.length - visible.length;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Wrap(spacing: spacing, children: row1.map(legendItem).toList()),
-            if (row2.isNotEmpty || remainingCount > 0) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: spacing,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  ...row2.map(legendItem),
-                  if (remainingCount > 0)
-                    InkWell(
-                      key: const Key('expandCategoriesButton'),
-                      borderRadius: BorderRadius.circular(6),
-                      onTap: () =>
-                          setState(() => _expandedCategoryLegend = true),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 2,
-                          vertical: 1,
-                        ),
-                        child: Text(
-                          '+$remainingCount ទៀត',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: green,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+        Widget legendItem(ExpenseCategory category) => SizedBox(
+          key: Key('summaryLegend_${category.name}'),
+          width: itemWidth(category),
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: category.color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Tooltip(
+                  message: category.label,
+                  child: Text(
+                    category.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: labelStyle,
+                  ),
+                ),
               ),
             ],
+          ),
+        );
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: runSpacing,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            ...visible.map(legendItem),
+            if (remainingCount > 0)
+              SizedBox(
+                width: moreWidth(remainingCount),
+                child: InkWell(
+                  key: const Key('expandCategoriesButton'),
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => _showAllCategories(categories),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 2,
+                      vertical: 1,
+                    ),
+                    child: Text(
+                      '+$remainingCount ទៀត',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: moreStyle,
+                    ),
+                  ),
+                ),
+              ),
           ],
         );
       },
     );
   }
+
+  Future<void> _showAllCategories(List<ExpenseCategory> categories) =>
+      showModalBottomSheet<void>(
+        context: context,
+        useSafeArea: true,
+        showDragHandle: true,
+        backgroundColor: paper,
+        constraints: const BoxConstraints(maxWidth: 560),
+        builder: (sheetContext) => ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.6,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 8, 8),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'មុខចំណាយទាំងអស់',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'បិទ',
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  shrinkWrap: true,
+                  itemCount: categories.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (_, index) {
+                    final category = categories[index];
+                    return Row(
+                      key: Key('allCategory_${category.name}'),
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: category.color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            category.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 
   Widget _transactionList() {
     final items = _filteredExpenses;
@@ -1033,7 +1068,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  e.title,
+                                  e.category.label,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(

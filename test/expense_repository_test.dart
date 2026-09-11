@@ -263,7 +263,7 @@ void main() {
         final category = await repo.addCategory('ថ្លៃសាលា');
         await repo.save(
           Expense(
-            title: category.label,
+            title: 'legacy custom title',
             amount: 50000,
             category: category,
             date: DateTime(2026, 9, 11),

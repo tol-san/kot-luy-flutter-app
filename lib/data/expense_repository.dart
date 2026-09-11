@@ -297,13 +297,12 @@ class ExpenseRepository {
         where: 'id = ?',
         whereArgs: [id],
       );
-      // Current records use the category label as their title. Preserve any
-      // legacy custom titles by changing only exact matches.
+      // A category is the single source of truth for an expense name.
       await txn.update(
         'expenses',
         {'title': clean},
-        where: 'category = ? AND title = ?',
-        whereArgs: [id, target!.label],
+        where: 'category = ?',
+        whereArgs: [id],
       );
     });
     unawaited(DriveBackup.dataChanged(database.path));

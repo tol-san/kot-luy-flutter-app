@@ -36,7 +36,9 @@ class _DetailScreenState extends State<DetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('លុបចំណាយនេះ?'),
-        content: Text('«${_expense.title}» នឹងត្រូវបានលុបចេញពីបញ្ជីរបស់អ្នក។'),
+        content: Text(
+          '«${_expense.category.label}» នឹងត្រូវបានលុបចេញពីបញ្ជីរបស់អ្នក។',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -80,7 +82,7 @@ class _DetailScreenState extends State<DetailScreen> {
           children: [
             const SizedBox(height: 16),
             Text(
-              _expense.title,
+              _expense.category.label,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             ),

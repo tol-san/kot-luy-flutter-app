@@ -401,6 +401,51 @@ void main() {
     expect(finalX, lessThan(midwayX));
   });
 
+  testWidgets('summary legend stays within two rows and never overflows', (
+    tester,
+  ) async {
+    final repo = MemoryRepository();
+    for (var i = 0; i < 5; i++) {
+      await repo.addCategory('testing long category name $i');
+    }
+    for (var i = 0; i < repo.categories.length; i++) {
+      final category = repo.categories[i];
+      await repo.save(
+        Expense(
+          title: category.label,
+          amount: 1000 + i,
+          category: category,
+          date: clock.now(),
+        ),
+      );
+    }
+
+    await mount(tester, repo, size: const Size(320, 844));
+    final visibleLegends = find.byWidgetPredicate(
+      (widget) =>
+          widget.key is ValueKey<String> &&
+          (widget.key! as ValueKey<String>).value.startsWith('summaryLegend_'),
+    );
+    final rowPositions = tester
+        .widgetList(visibleLegends)
+        .map(
+          (widget) =>
+              tester.getTopLeft(find.byKey(widget.key!)).dy.round(),
+        )
+        .toSet();
+    expect(rowPositions.length, lessThanOrEqualTo(2));
+    expect(find.byKey(const Key('expandCategoriesButton')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const Key('expandCategoriesButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('មុខចំណាយទាំងអស់'), findsOneWidget);
+    for (final category in repo.categories) {
+      expect(find.byKey(Key('allCategory_${category.name}')), findsOneWidget);
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('mobile screens render with sample data', (tester) async {
     await withClock(Clock.fixed(DateTime(2026, 9, 6, 12)), () async {
       final repo = MemoryRepository();
