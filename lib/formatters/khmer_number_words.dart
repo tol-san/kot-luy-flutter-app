@@ -11,13 +11,20 @@ const _digits = [
   'ប្រាំបួន',
 ];
 
-const _places = [
-  (100000000000, 'សែនលាន'),
-  (10000000000, 'ម៉ឺនលាន'),
-  (1000000000, 'ពាន់លាន'),
-  (100000000, 'រយលាន'),
-  (10000000, 'ដប់លាន'),
-  (1000000, 'លាន'),
+const _tens = [
+  '',
+  'ដប់',
+  'ម្ភៃ',
+  'សាមសិប',
+  'សែសិប',
+  'ហាសិប',
+  'ហុកសិប',
+  'ចិតសិប',
+  'ប៉ែតសិប',
+  'កៅសិប',
+];
+
+const _placesBelowMillion = [
   (100000, 'សែន'),
   (10000, 'ម៉ឺន'),
   (1000, 'ពាន់'),
@@ -33,9 +40,25 @@ String khmerNumberWords(int value) {
   }
   if (value == 0) return _digits.first;
 
-  var remainder = value;
+  return _readPositive(value);
+}
+
+String _readPositive(int value) {
   final result = StringBuffer();
-  for (final place in _places) {
+  var remainder = value;
+
+  // Khmer numbers above one million keep the lower six place values as one
+  // group. The leading group is read naturally, then followed by `លាន`.
+  // Recursing here also supports billions, trillions, and larger Dart ints.
+  if (remainder >= 1000000) {
+    final millions = remainder ~/ 1000000;
+    result
+      ..write(_readPositive(millions))
+      ..write('លាន');
+    remainder %= 1000000;
+  }
+
+  for (final place in _placesBelowMillion) {
     final count = remainder ~/ place.$1;
     if (count == 0) continue;
     result.write(_digits[count]);
@@ -44,7 +67,7 @@ String khmerNumberWords(int value) {
   }
   if (remainder >= 20) {
     final tens = remainder ~/ 10;
-    result.write(tens == 2 ? 'ម្ភៃ' : '${_digits[tens]}ដប់');
+    result.write(_tens[tens]);
     remainder %= 10;
   } else if (remainder >= 10) {
     result.write('ដប់');

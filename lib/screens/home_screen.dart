@@ -743,6 +743,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: Column(
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -767,32 +768,41 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      khmerRielWords(total),
-                      key: const Key('totalAmountWords'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: muted, fontSize: 11),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      '${expenses.length} កំណត់ត្រា • ${_period.label}',
-                      style: const TextStyle(fontSize: 10, color: muted),
-                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               InkWell(
                 borderRadius: BorderRadius.circular(80),
                 onTap: () => setState(() => _reports = true),
                 child: ExpenseChart(
                   expenses: expenses,
-                  size: MediaQuery.sizeOf(context).width < 370 ? 94 : 112,
+                  size: MediaQuery.sizeOf(context).width < 370 ? 88 : 104,
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 5),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              khmerRielWords(total),
+              key: const Key('totalAmountWords'),
+              softWrap: true,
+              style: const TextStyle(
+                color: muted,
+                fontSize: 11.5,
+                height: 1.55,
+              ),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '${expenses.length} កំណត់ត្រា • ${_period.label}',
+              style: const TextStyle(fontSize: 10, color: muted),
+            ),
           ),
           if (categories.isNotEmpty) ...[
             const SizedBox(height: 12),
