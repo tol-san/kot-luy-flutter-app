@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:vector_graphics/vector_graphics.dart';
 
 import 'package:kot_luy/data/expense_repository.dart';
 
@@ -73,8 +74,8 @@ class LaunchArtwork extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final available = screenWidth > 64 ? screenWidth - 48 : 342.0;
-    return SvgPicture.asset(
-      'assets/illustrations/kot-luy-logo.svg',
+    return SvgPicture(
+      const AssetBytesLoader('assets/illustrations/kot-luy-logo.svg.vec'),
       width: math.min(360.0, available),
       semanticsLabel: 'កត់លុយ',
     );
