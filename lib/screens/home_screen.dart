@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -75,24 +77,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         includeArchived: true,
       );
       final expenses = await widget.repository.all(categories: categories);
-      final now = clock.now();
-      try {
-        await widget.reminderService?.activateDefaultReminders();
-        await widget.reminderService?.syncSummaryAmounts(
-          weeklyAmount: expenses
-              .where(
-                (expense) => ExpensePeriod.week.contains(expense.date, now),
-              )
-              .fold(0, (sum, expense) => sum + expense.amount),
-          monthlyAmount: expenses
-              .where(
-                (expense) => ExpensePeriod.month.contains(expense.date, now),
-              )
-              .fold(0, (sum, expense) => sum + expense.amount),
-        );
-      } catch (_) {
-        // Reminder failures must never block access to expense data.
-      }
       if (mounted) {
         setState(() {
           _expenses = expenses;
@@ -101,6 +85,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _error = false;
         });
       }
+      // Expense data is usable now. Reminder initialization and native
+      // scheduling continue independently so they cannot delay Home.
+      unawaited(_syncReminders(expenses));
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -108,6 +95,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _loading = false;
         });
       }
+    }
+  }
+
+  Future<void> _syncReminders(List<Expense> expenses) async {
+    final service = widget.reminderService;
+    if (service == null) return;
+    final now = clock.now();
+    try {
+      await service.activateDefaultReminders();
+      await service.syncSummaryAmounts(
+        weeklyAmount: expenses
+            .where((expense) => ExpensePeriod.week.contains(expense.date, now))
+            .fold(0, (sum, expense) => sum + expense.amount),
+        monthlyAmount: expenses
+            .where((expense) => ExpensePeriod.month.contains(expense.date, now))
+            .fold(0, (sum, expense) => sum + expense.amount),
+      );
+    } catch (_) {
+      // Reminder failures must never block access to expense data.
     }
   }
 

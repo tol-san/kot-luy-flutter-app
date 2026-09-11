@@ -111,6 +111,7 @@ class LocalReminderService implements ReminderService {
   static const _monthlyPayload = 'open_monthly_report';
 
   final FlutterLocalNotificationsPlugin _notifications;
+  Future<void>? _initialization;
   bool _initialized = false;
   bool _pendingOpenExpense = false;
   ReminderKind? _pendingSummary;
@@ -128,7 +129,9 @@ class LocalReminderService implements ReminderService {
           defaultTargetPlatform == TargetPlatform.iOS);
 
   @override
-  Future<void> initialize() async {
+  Future<void> initialize() => _initialization ??= _initialize();
+
+  Future<void> _initialize() async {
     if (!_isMobile) return;
     try {
       tz_data.initializeTimeZones();
@@ -161,6 +164,7 @@ class LocalReminderService implements ReminderService {
 
   @override
   Future<void> activateDefaultReminders() async {
+    await initialize();
     if (!_initialized) return;
     var settings = await loadSettings();
     if (!settings.monthlyEnabled || await _permissionAllowed()) return;
@@ -171,8 +175,12 @@ class LocalReminderService implements ReminderService {
   }
 
   void _handleResponse(NotificationResponse response) {
-    final kind = _kindForPayload(response.payload);
-    if (response.payload == _dailyPayload) {
+    _dispatchPayload(response.payload);
+  }
+
+  void _dispatchPayload(String? payload) {
+    final kind = _kindForPayload(payload);
+    if (payload == _dailyPayload) {
       final callback = onOpenExpense;
       if (callback == null) {
         _pendingOpenExpense = true;
@@ -190,11 +198,7 @@ class LocalReminderService implements ReminderService {
   }
 
   void _rememberPayload(String? payload) {
-    if (payload == _dailyPayload) {
-      _pendingOpenExpense = true;
-    } else {
-      _pendingSummary = _kindForPayload(payload);
-    }
+    _dispatchPayload(payload);
   }
 
   ReminderKind? _kindForPayload(String? payload) => switch (payload) {
@@ -241,6 +245,7 @@ class LocalReminderService implements ReminderService {
 
   @override
   Future<bool> setEnabled(ReminderKind kind, bool enabled) async {
+    await initialize();
     if (!_initialized) return false;
     var settings = await loadSettings();
     if (enabled && !await _permissionAllowed()) {
@@ -262,6 +267,7 @@ class LocalReminderService implements ReminderService {
 
   @override
   Future<void> updateTime(ReminderKind kind, TimeOfDay time) async {
+    await initialize();
     var settings = await loadSettings();
     settings = settings.copyWith(kind: kind, time: time);
     if (settings.enabledFor(kind) && _initialized) await _schedule(kind, time);
@@ -273,6 +279,7 @@ class LocalReminderService implements ReminderService {
     required int weeklyAmount,
     required int monthlyAmount,
   }) async {
+    await initialize();
     _weeklyAmount = weeklyAmount;
     _monthlyAmount = monthlyAmount;
     if (!_initialized || !await _permissionAllowed()) return;
@@ -437,6 +444,7 @@ class LocalReminderService implements ReminderService {
 
   @override
   Future<void> openSystemNotificationSettings() async {
+    await initialize();
     if (!_initialized) return;
     if (defaultTargetPlatform == TargetPlatform.android) {
       await _notifications

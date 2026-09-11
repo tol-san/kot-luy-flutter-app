@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -8,7 +10,7 @@ import 'package:kot_luy/screens/startup_screen.dart';
 import 'package:kot_luy/services/reminder_service.dart';
 import 'package:kot_luy/theme.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -19,9 +21,12 @@ Future<void> main() async {
     ),
   );
   final reminderService = LocalReminderService();
-  await reminderService.initialize();
-  // Draw the first frame while StartupScreen opens storage asynchronously.
+  // Draw the first frame immediately. Notification setup uses platform channels,
+  // timezone data, and preferences, none of which should hold up app launch.
   runApp(KotLuyApp(reminderService: reminderService));
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(reminderService.initialize());
+  });
 }
 
 class KotLuyApp extends StatelessWidget {
@@ -37,10 +42,7 @@ class KotLuyApp extends StatelessWidget {
     supportedLocales: const [Locale('km'), Locale('en')],
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
     home: repository != null
-        ? HomeScreen(
-            repository: repository!,
-            reminderService: reminderService,
-          )
+        ? HomeScreen(repository: repository!, reminderService: reminderService)
         : StartupScreen(reminderService: reminderService),
   );
 }
