@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
 import 'package:kot_luy/data/expense_repository.dart';
+import 'package:kot_luy/globals.dart';
 import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/models/report_period.dart';
 import 'package:kot_luy/pdf/expense_pdf_service.dart';
@@ -110,9 +111,8 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('មិនអាចបង្កើត PDF បានទេ៖ $e')));
+        rootMessengerKey.currentState
+            ?.showSnackBar(SnackBar(content: Text('មិនអាចបង្កើត PDF បានទេ៖ $e')));
       }
     } finally {
       if (mounted) setState(() => _activeAction = null);
@@ -166,7 +166,7 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        rootMessengerKey.currentState?.showSnackBar(
           SnackBar(content: Text('មានបញ្ហាក្នុងការទាញយក PDF៖ $e')),
         );
       }

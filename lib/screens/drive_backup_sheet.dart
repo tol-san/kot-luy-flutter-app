@@ -5,6 +5,7 @@ import 'package:kot_luy/backup/drive_backup.dart';
 import 'package:kot_luy/backup/drive_error_parser.dart';
 import 'package:kot_luy/backup/drive_formatters.dart';
 import 'package:kot_luy/data/expense_repository.dart';
+import 'package:kot_luy/globals.dart';
 import 'package:kot_luy/theme.dart';
 import 'package:kot_luy/widgets/backup/backup_error_banner.dart';
 import 'package:kot_luy/widgets/backup/drive_account_card.dart';
@@ -108,7 +109,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
           _remoteBackups = list;
           _actionInProgress = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
+        rootMessengerKey.currentState?.showSnackBar(
           const SnackBar(
             content: Text('បានភ្ជាប់ Google Drive ជោគជ័យ'),
             behavior: SnackBarBehavior.floating,
@@ -302,7 +303,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
           _restoringId = null;
         });
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
+        rootMessengerKey.currentState?.showSnackBar(
           const SnackBar(
             content: Text('បានស្ដារទិន្នន័យឡើងវិញដោយជោគជ័យ!'),
             behavior: SnackBarBehavior.floating,

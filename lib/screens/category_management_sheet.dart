@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:kot_luy/data/expense_repository.dart';
+import 'package:kot_luy/globals.dart';
 import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/theme.dart';
 import 'package:kot_luy/widgets/category_input_row.dart';
@@ -129,7 +130,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
       (c) => c.label.trim().toLowerCase() == cleanName.toLowerCase(),
     )) {
       _highlightCategoryByName(cleanName);
-      ScaffoldMessenger.of(context).showSnackBar(
+      rootMessengerKey.currentState?.showSnackBar(
         SnackBar(
           content: Text(
             'មុខចំណាយ «$cleanName» មានរួចហើយ មិនអាចបន្ថែមស្ទួនបានទេ',
@@ -160,7 +161,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
         final message = e is ArgumentError && e.message != null
             ? e.message.toString()
             : 'មិនអាចបន្ថែមមុខចំណាយនេះបានទេ';
-        ScaffoldMessenger.of(context).showSnackBar(
+        rootMessengerKey.currentState?.showSnackBar(
           SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
         );
       }
@@ -182,7 +183,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
       await _loadCategories();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      rootMessengerKey.currentState?.showSnackBar(
         SnackBar(
           content: Text(
             error is ArgumentError && error.message != null
@@ -197,7 +198,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
 
   Future<void> _deleteCategory(ExpenseCategory category) async {
     if (_categories.length <= 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      rootMessengerKey.currentState?.showSnackBar(
         const SnackBar(
           content: Text('មិនអាចលុបបានទេ ត្រូវមានមុខចំណាយយ៉ាងហោចណាស់មួយ'),
           behavior: SnackBarBehavior.floating,
@@ -210,7 +211,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
       used = await widget.repository.categoryHasExpenses(category.name);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      rootMessengerKey.currentState?.showSnackBar(
         const SnackBar(
           content: Text('មិនអាចពិនិត្យមុខចំណាយបានទេ សូមព្យាយាមម្ដងទៀត'),
         ),
@@ -248,7 +249,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
         await _loadCategories();
       } catch (error) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        rootMessengerKey.currentState?.showSnackBar(
           SnackBar(
             content: Text(
               error is StateError
@@ -278,7 +279,7 @@ class _CategoryManagementSheetState extends State<CategoryManagementSheet> {
       await _loadCategories();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      rootMessengerKey.currentState?.showSnackBar(
         const SnackBar(
           content: Text('មិនអាចបង្ហាញមុខចំណាយឡើងវិញបានទេ សូមព្យាយាមម្ដងទៀត'),
         ),

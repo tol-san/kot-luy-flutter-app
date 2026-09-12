@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kot_luy/globals.dart';
 import 'package:kot_luy/screens/reminder_settings_sheet.dart';
 import 'package:kot_luy/services/reminder_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -84,6 +85,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       MaterialApp(
+        scaffoldMessengerKey: rootMessengerKey,
         home: Scaffold(body: ReminderSettingsSheet(reminderService: service)),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:kot_luy/globals.dart';
 import 'package:kot_luy/services/reminder_service.dart';
 import 'package:kot_luy/theme.dart';
 
@@ -61,7 +62,12 @@ class _ReminderSettingsSheetState extends State<ReminderSettingsSheet> {
       return;
     }
     setState(() => _saving = null);
-    ScaffoldMessenger.of(context).showSnackBar(
+    // Pop the sheet first so the SnackBar (with the "open settings" action)
+    // is fully visible — a SnackBar rendered behind an open modal is invisible.
+    // Guard with canPop() so tests that mount the sheet as the root widget
+    // are not broken (root route cannot be popped).
+    if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+    rootMessengerKey.currentState?.showSnackBar(
       SnackBar(
         content: const Text(
           'មិនអាចបើកការរំលឹកបានទេ។ សូមអនុញ្ញាតការជូនដំណឹងក្នុងការកំណត់របស់ទូរស័ព្ទ។',
@@ -98,7 +104,7 @@ class _ReminderSettingsSheetState extends State<ReminderSettingsSheet> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = null);
-      ScaffoldMessenger.of(context).showSnackBar(
+      rootMessengerKey.currentState?.showSnackBar(
         const SnackBar(
           content: Text('មិនអាចប្ដូរម៉ោងរំលឹកបានទេ។ សូមសាកល្បងម្ដងទៀត។'),
           behavior: SnackBarBehavior.floating,

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'package:kot_luy/data/expense_repository.dart';
+import 'package:kot_luy/globals.dart';
 import 'package:kot_luy/screens/home_screen.dart';
 import 'package:kot_luy/screens/startup_screen.dart';
 import 'package:kot_luy/services/reminder_service.dart';
@@ -35,6 +36,7 @@ class KotLuyApp extends StatelessWidget {
   final ReminderService? reminderService;
   @override
   Widget build(BuildContext context) => MaterialApp(
+    scaffoldMessengerKey: rootMessengerKey,
     title: 'កត់លុយ • Kot Luy',
     debugShowCheckedModeBanner: false,
     theme: appTheme(),
