@@ -755,6 +755,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: InkWell(
                         key: Key('period_${p.name}'),
                         borderRadius: BorderRadius.circular(24),
+                        overlayColor: const WidgetStatePropertyAll(
+                          Colors.transparent,
+                        ),
                         onTap: p == _period ? null : () => _selectPeriod(p),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
