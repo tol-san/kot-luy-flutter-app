@@ -15,6 +15,7 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -26,6 +27,7 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val CHANNEL = "kot_luy/drive_backup"
         private const val PDF_CHANNEL = "kot_luy/pdf_storage"
+        private const val SETTINGS_CHANNEL = "kot_luy/app_settings"
         private const val RC_CHOOSE_ACCOUNT = 9001
         private const val RC_AUTHORIZE = 9002
     }
@@ -181,6 +183,40 @@ class MainActivity : FlutterActivity() {
                         result.success(opened)
                     } catch (e: Exception) {
                         result.error("open_failed", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SETTINGS_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "openNotificationSettings" -> {
+                    val intent = Intent().apply {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            action = Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                            putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                        } else {
+                            action = "android.settings.APP_NOTIFICATION_SETTINGS"
+                            putExtra("app_package", packageName)
+                            putExtra("app_uid", applicationInfo.uid)
+                        }
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    try {
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        try {
+                            val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", packageName, null)
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            startActivity(fallback)
+                            result.success(true)
+                        } catch (e2: Exception) {
+                            result.error("failed", e2.message, null)
+                        }
                     }
                 }
                 else -> result.notImplemented()

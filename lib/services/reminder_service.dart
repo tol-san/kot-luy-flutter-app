@@ -1,7 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -137,8 +136,12 @@ class LocalReminderService implements ReminderService {
     if (!_isMobile) return;
     try {
       tz_data.initializeTimeZones();
-      final timezone = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(timezone.identifier));
+      try {
+        final timezone = await FlutterTimezone.getLocalTimezone();
+        tz.setLocalLocation(tz.getLocation(timezone.identifier));
+      } catch (_) {
+        tz.setLocalLocation(tz.getLocation('Asia/Phnom_Penh'));
+      }
       const initialization = InitializationSettings(
         android: AndroidInitializationSettings('ic_notification'),
         iOS: DarwinInitializationSettings(
@@ -151,26 +154,30 @@ class LocalReminderService implements ReminderService {
         settings: initialization,
         onDidReceiveNotificationResponse: _handleResponse,
       );
-      final androidPlugin = _notifications
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
-      await androidPlugin?.createNotificationChannel(
-        const AndroidNotificationChannel(
-          'expense_reminders',
-          'ការរំលឹកចំណាយ',
-          description: 'រំលឹកការកត់ និងសង្ខេបចំណាយ',
-          importance: Importance.defaultImportance,
-        ),
-      );
+      try {
+        final androidPlugin = _notifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+        await androidPlugin?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'expense_reminders',
+            'ការរំលឹកចំណាយ',
+            description: 'រំលឹកការកត់ និងសង្ខេបចំណាយ',
+            importance: Importance.defaultImportance,
+          ),
+        );
+      } catch (_) {}
       _initialized = true;
       final launch = await _notifications.getNotificationAppLaunchDetails();
       if (launch?.didNotificationLaunchApp ?? false) {
         _rememberPayload(launch?.notificationResponse?.payload);
       }
 
-      final settings = await loadSettings();
-      if (settings.dailyEnabled) await _scheduleDaily(settings.dailyTime);
+      try {
+        final settings = await loadSettings();
+        if (settings.dailyEnabled) await _scheduleDaily(settings.dailyTime);
+      } catch (_) {}
     } catch (_) {
       _initialized = false;
     }
@@ -458,20 +465,29 @@ class LocalReminderService implements ReminderService {
 
   @override
   Future<void> openSystemNotificationSettings() async {
-    await initialize();
-    if (!_initialized) return;
     if (defaultTargetPlatform == TargetPlatform.android) {
-      await _notifications
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.openAppNotificationSettings();
+      try {
+        const channel = MethodChannel('kot_luy/app_settings');
+        final success =
+            await channel.invokeMethod<bool>('openNotificationSettings');
+        if (success == true) return;
+      } catch (_) {}
+
+      try {
+        await _notifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >()
+            ?.openAppNotificationSettings();
+      } catch (_) {}
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      await _notifications
-          .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin
-          >()
-          ?.openAppNotificationSettings();
+      try {
+        await _notifications
+            .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin
+            >()
+            ?.openAppNotificationSettings();
+      } catch (_) {}
     }
   }
 
