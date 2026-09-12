@@ -151,6 +151,18 @@ class LocalReminderService implements ReminderService {
         settings: initialization,
         onDidReceiveNotificationResponse: _handleResponse,
       );
+      final androidPlugin = _notifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'expense_reminders',
+          'ការរំលឹកចំណាយ',
+          description: 'រំលឹកការកត់ និងសង្ខេបចំណាយ',
+          importance: Importance.defaultImportance,
+        ),
+      );
       _initialized = true;
       final launch = await _notifications.getNotificationAppLaunchDetails();
       if (launch?.didNotificationLaunchApp ?? false) {
@@ -404,28 +416,8 @@ class LocalReminderService implements ReminderService {
     );
   }
 
-  /// Android 13+ (API 33) introduces POST_NOTIFICATIONS as a runtime permission.
-  /// On older versions, notifications are allowed unless the user disabled them
-  /// manually in system settings — areNotificationsEnabled() covers that case.
-  bool get _androidNeedsRuntimePermission =>
-      Platform.isAndroid && _androidSdkVersion >= 33;
-
-  /// Best-effort read of the Android SDK int from the OS version string.
-  /// dart:io does not expose it directly, so we fall back to 0 on parse failure.
-  int get _androidSdkVersion {
-    // Platform.operatingSystemVersion on Android looks like:
-    // "Android 11 (SDK 30, arm64-v8a)"
-    final match = RegExp(r'SDK\s+(\d+)').firstMatch(
-      Platform.operatingSystemVersion,
-    );
-    return int.tryParse(match?.group(1) ?? '') ?? 0;
-  }
-
   Future<bool> _permissionAllowed() async {
     if (defaultTargetPlatform == TargetPlatform.android) {
-      // On Android < 13, notifications are on by default (no runtime permission).
-      // areNotificationsEnabled() still returns false if the user turned them
-      // off in system settings, so keep the check but default to true not false.
       final androidPlugin = _notifications
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
@@ -446,17 +438,12 @@ class LocalReminderService implements ReminderService {
 
   Future<bool> _requestPermission() async {
     if (defaultTargetPlatform == TargetPlatform.android) {
-      // Android < 13 has no runtime notification permission dialog.
-      // If we reach here it means areNotificationsEnabled() returned false,
-      // i.e. the user manually disabled notifications in system settings.
-      // We cannot grant permission programmatically — guide them to settings.
-      if (!_androidNeedsRuntimePermission) return false;
-      return await _notifications
-              .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin
-              >()
-              ?.requestNotificationsPermission() ??
-          false;
+      final androidPlugin = _notifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (androidPlugin == null) return true;
+      return await androidPlugin.requestNotificationsPermission() ?? false;
     }
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return await _notifications

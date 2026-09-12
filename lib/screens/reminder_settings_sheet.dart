@@ -29,7 +29,8 @@ class ReminderSettingsSheet extends StatefulWidget {
   State<ReminderSettingsSheet> createState() => _ReminderSettingsSheetState();
 }
 
-class _ReminderSettingsSheetState extends State<ReminderSettingsSheet> {
+class _ReminderSettingsSheetState extends State<ReminderSettingsSheet>
+    with WidgetsBindingObserver {
   ReminderSettings _settings = const ReminderSettings.defaults();
   bool _loading = true;
   ReminderKind? _saving;
@@ -37,7 +38,21 @@ class _ReminderSettingsSheetState extends State<ReminderSettingsSheet> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _load();
+    }
   }
 
   Future<void> _load() async {
@@ -62,21 +77,26 @@ class _ReminderSettingsSheetState extends State<ReminderSettingsSheet> {
       return;
     }
     setState(() => _saving = null);
-    // Pop the sheet first so the SnackBar (with the "open settings" action)
-    // is fully visible — a SnackBar rendered behind an open modal is invisible.
-    // Guard with canPop() so tests that mount the sheet as the root widget
-    // are not broken (root route cannot be popped).
-    if (mounted && Navigator.canPop(context)) Navigator.pop(context);
-    rootMessengerKey.currentState?.showSnackBar(
-      SnackBar(
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('មិនអាចបើកការរំលឹកបានទេ'),
         content: const Text(
-          'មិនអាចបើកការរំលឹកបានទេ។ សូមអនុញ្ញាតការជូនដំណឹងក្នុងការកំណត់របស់ទូរស័ព្ទ។',
+          'ការជូនដំណឹងត្រូវបានបិទក្នុងទូរស័ព្ទរបស់អ្នក។ សូមបើកការកំណត់ទូរស័ព្ទ ហើយចុច «អនុញ្ញាតការជូនដំណឹង»។',
         ),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'បើកការកំណត់',
-          onPressed: widget.reminderService.openSystemNotificationSettings,
-        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('បោះបង់'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              widget.reminderService.openSystemNotificationSettings();
+            },
+            child: const Text('បើកការកំណត់'),
+          ),
+        ],
       ),
     );
   }
