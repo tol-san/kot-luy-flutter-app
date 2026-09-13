@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 
 import 'package:kot_luy/theme.dart';
 
-/// Full shimmering skeleton layout matching the Google Drive backup modal.
+/// Shimmering skeleton layout matching the Google Drive backup modal.
 class DriveBackupSkeleton extends StatefulWidget {
-  const DriveBackupSkeleton({super.key});
+  const DriveBackupSkeleton({
+    super.key,
+    this.snapshotsOnly = false,
+  });
+
+  final bool snapshotsOnly;
 
   @override
   State<DriveBackupSkeleton> createState() => _DriveBackupSkeletonState();
@@ -47,6 +52,19 @@ class _DriveBackupSkeletonState extends State<DriveBackupSkeleton>
 
   @override
   Widget build(BuildContext context) {
+    if (widget.snapshotsOnly) {
+      return _ShimmerScope(
+        animation: _controller,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _skeletonSnapshotTile(),
+            _skeletonSnapshotTile(),
+          ],
+        ),
+      );
+    }
+
     return _ShimmerScope(
       animation: _controller,
       child: ListView(

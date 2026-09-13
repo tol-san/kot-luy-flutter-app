@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:kot_luy/backup/drive_backup.dart';
 import 'package:kot_luy/backup/drive_formatters.dart';
 import 'package:kot_luy/theme.dart';
+import 'package:kot_luy/widgets/backup/drive_backup_skeleton.dart';
 
 /// Section showing list of remote Google Drive backups with refresh and restore actions.
 class DriveSnapshotsSection extends StatelessWidget {
@@ -13,6 +14,7 @@ class DriveSnapshotsSection extends StatelessWidget {
     required this.restoringId,
     required this.onRefresh,
     required this.onRestore,
+    this.loading = false,
   });
 
   final List<DriveBackupItem> remoteBackups;
@@ -20,6 +22,7 @@ class DriveSnapshotsSection extends StatelessWidget {
   final String? restoringId;
   final VoidCallback onRefresh;
   final ValueChanged<DriveBackupItem> onRestore;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -41,12 +44,14 @@ class DriveSnapshotsSection extends StatelessWidget {
             IconButton(
               tooltip: 'ទាញយកបញ្ជីឡើងវិញ',
               icon: const Icon(Icons.refresh_rounded, size: 20, color: muted),
-              onPressed: actionInProgress ? null : onRefresh,
+              onPressed: actionInProgress || loading ? null : onRefresh,
             ),
           ],
         ),
         const SizedBox(height: 12),
-        if (remoteBackups.isEmpty)
+        if (loading)
+          const DriveBackupSkeleton(snapshotsOnly: true)
+        else if (remoteBackups.isEmpty)
           Container(
             padding: const EdgeInsets.all(24),
             alignment: Alignment.center,

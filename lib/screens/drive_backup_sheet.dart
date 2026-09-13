@@ -49,6 +49,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
   DriveBackupStatus _status = const DriveBackupStatus();
   List<DriveBackupItem> _remoteBackups = [];
   bool _loading = true;
+  bool _snapshotsLoading = false;
   bool _actionInProgress = false;
   bool _backingUp = false;
   String? _backupFeedback;
@@ -62,14 +63,23 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
     _refreshStatus();
   }
 
-  Future<void> _refreshStatus() async {
+  Future<void> _refreshStatus({bool isManualRefresh = false}) async {
     setState(() {
-      _loading = true;
+      if (!isManualRefresh) {
+        _loading = true;
+      }
+      _snapshotsLoading = true;
       _errorMessage = null;
     });
     try {
       final status = await _drive.getStatus();
-      List<DriveBackupItem> list = [];
+      if (mounted) {
+        setState(() {
+          _status = status;
+          _loading = false;
+        });
+      }
+      List<DriveBackupItem>? list;
       if (status.isConnected) {
         try {
           list = await _drive.list();
@@ -77,15 +87,17 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
       }
       if (mounted) {
         setState(() {
-          _status = status;
-          _remoteBackups = list;
-          _loading = false;
+          if (list != null) {
+            _remoteBackups = list;
+          }
+          _snapshotsLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _loading = false;
+          _snapshotsLoading = false;
           _errorMessage = parseDriveError(e);
         });
       }
@@ -99,14 +111,20 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
     });
     try {
       final status = await _drive.connect();
-      List<DriveBackupItem> list = [];
+      if (mounted) {
+        setState(() {
+          _status = status;
+          _snapshotsLoading = true;
+        });
+      }
+      List<DriveBackupItem>? list;
       try {
         list = await _drive.list();
       } catch (_) {}
       if (mounted) {
         setState(() {
-          _status = status;
-          _remoteBackups = list;
+          if (list != null) _remoteBackups = list;
+          _snapshotsLoading = false;
           _actionInProgress = false;
         });
         rootMessengerKey.currentState?.showSnackBar(
@@ -120,6 +138,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
       if (mounted) {
         setState(() {
           _actionInProgress = false;
+          _snapshotsLoading = false;
           _errorMessage = parseDriveConnectError(e);
         });
       }
@@ -159,6 +178,7 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
         setState(() {
           _status = status;
           _remoteBackups = [];
+          _snapshotsLoading = false;
           _actionInProgress = false;
         });
       }
@@ -449,8 +469,10 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
                             remoteBackups: _remoteBackups,
                             actionInProgress: _actionInProgress,
                             restoringId: _restoringId,
-                            onRefresh: _refreshStatus,
+                            onRefresh: () =>
+                                _refreshStatus(isManualRefresh: true),
                             onRestore: _restore,
+                            loading: _snapshotsLoading,
                           ),
                         ],
                       ],
