@@ -58,7 +58,6 @@ void main() {
         category: ExpenseCategory(
           name: 'shopping',
           label: 'ប្រភពចំណូល និងទិញទំនិញ',
-          icon: Icons.shopping_bag_outlined,
           color: const Color(0xFF0891B2),
           background: const Color(0xFFE0F2FE),
           isCustom: true,

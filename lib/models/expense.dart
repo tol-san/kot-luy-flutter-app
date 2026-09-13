@@ -29,7 +29,6 @@ class ExpenseCategory {
   const ExpenseCategory({
     required this.name,
     required this.label,
-    required this.icon,
     required this.color,
     required this.background,
     this.isCustom = false,
@@ -38,7 +37,6 @@ class ExpenseCategory {
 
   final String name;
   final String label;
-  final IconData icon;
   final Color color;
   final Color background;
   final bool isCustom;
@@ -47,42 +45,36 @@ class ExpenseCategory {
   static const breakfast = ExpenseCategory(
     name: 'breakfast',
     label: 'បាយពេលព្រឹក',
-    icon: Icons.wb_sunny_outlined,
     color: Color(0xFF2563EB),
     background: Color(0xFFE8EFFE),
   );
   static const lunch = ExpenseCategory(
     name: 'lunch',
     label: 'បាយថ្ងៃត្រង់',
-    icon: Icons.restaurant_rounded,
     color: Color(0xFF16A34A),
     background: Color(0xFFE7F5EC),
   );
   static const dinner = ExpenseCategory(
     name: 'dinner',
     label: 'បាយល្ងាច',
-    icon: Icons.nights_stay_outlined,
     color: Color(0xFFDC2626),
     background: Color(0xFFFCE8E8),
   );
   static const fuel = ExpenseCategory(
     name: 'fuel',
     label: 'ចាក់សាំង',
-    icon: Icons.local_gas_station_rounded,
     color: Color(0xFFEAB308),
     background: Color(0xFFFEF7DC),
   );
   static const coffee = ExpenseCategory(
     name: 'coffee',
     label: 'កាហ្វេ',
-    icon: Icons.local_cafe_outlined,
     color: Color(0xFF9333EA),
     background: Color(0xFFF3E9FD),
   );
   static const other = ExpenseCategory(
     name: 'other',
     label: 'ផ្សេងៗ',
-    icon: Icons.more_horiz_rounded,
     color: Color(0xFF64748B),
     background: Color(0xFFEEF1F5),
   );
@@ -167,7 +159,6 @@ class ExpenseCategory {
       _ => ExpenseCategory(
         name: name,
         label: name.startsWith('custom_') ? name.substring(7) : name,
-        icon: Icons.local_offer_outlined,
         color: autoColors[name.hashCode.abs() % autoColors.length],
         background: autoBackground(
           autoColors[name.hashCode.abs() % autoColors.length],

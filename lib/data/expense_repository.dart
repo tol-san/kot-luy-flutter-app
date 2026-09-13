@@ -245,7 +245,6 @@ class ExpenseRepository {
       return ExpenseCategory(
         name: id,
         label: label,
-        icon: defaultMatch?.icon ?? Icons.local_offer_outlined,
         color: color,
         background: ExpenseCategory.autoBackground(color),
         isCustom: isCustom,
@@ -290,7 +289,6 @@ class ExpenseRepository {
     return ExpenseCategory(
       name: id,
       label: clean,
-      icon: Icons.local_offer_outlined,
       color: selectedColor,
       background: ExpenseCategory.autoBackground(selectedColor),
       isCustom: true,

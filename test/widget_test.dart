@@ -78,7 +78,6 @@ class MemoryRepository implements ExpenseRepository {
         (c) => ExpenseCategory(
           name: c.name,
           label: c.label,
-          icon: c.icon,
           color: c.color,
           background: c.background,
           isCustom: c.isCustom,
@@ -105,7 +104,6 @@ class MemoryRepository implements ExpenseRepository {
     final cat = ExpenseCategory(
       name: id,
       label: clean,
-      icon: Icons.local_offer_outlined,
       color: color,
       background: ExpenseCategory.autoBackground(color),
       isCustom: true,
@@ -135,7 +133,6 @@ class MemoryRepository implements ExpenseRepository {
     categories[index] = ExpenseCategory(
       name: current.name,
       label: clean,
-      icon: current.icon,
       color: current.color,
       background: current.background,
       isCustom: current.isCustom,
