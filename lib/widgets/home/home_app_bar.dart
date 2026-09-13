@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:vector_graphics/vector_graphics.dart';
 
 import 'package:kot_luy/theme.dart';
 
@@ -116,8 +117,8 @@ class HomeCompanion extends StatelessWidget {
             ],
           ),
         ),
-        SvgPicture.asset(
-          'assets/illustrations/wallet.svg',
+        SvgPicture(
+          const AssetBytesLoader('assets/illustrations/wallet.svg.vec'),
           width: 96,
           height: 90,
           semanticsLabel: 'មិត្តកាបូបលុយញញឹម',

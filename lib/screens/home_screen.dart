@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:vector_graphics/vector_graphics.dart';
 
 import 'package:kot_luy/data/expense_repository.dart';
 import 'package:kot_luy/formatters/khmer_number_words.dart';
@@ -690,8 +691,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: FilledButton.icon(
                         key: const Key('addExpense'),
                         onPressed: _add,
-                        icon: SvgPicture.asset(
-                          'assets/illustrations/wallet_arrow_up.svg',
+                        icon: SvgPicture(
+                          const AssetBytesLoader(
+                            'assets/illustrations/wallet_arrow_up.svg.vec',
+                          ),
                           width: 20,
                           height: 20,
                           colorFilter: const ColorFilter.mode(

@@ -27,9 +27,31 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.byType(HomeScreen), findsOneWidget);
-    expect(find.byType(LaunchArtwork), findsNothing);
     await tester.pumpAndSettle();
+    expect(find.byType(LaunchArtwork), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('startup honors disableAnimations by entering home with zero duration', (
+    tester,
+  ) async {
+    final storage = Completer<ExpenseRepository>();
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: appTheme(),
+        home: MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: StartupScreen(openRepository: () => storage.future),
+        ),
+      ),
+    );
+    expect(find.byType(LaunchArtwork), findsOneWidget);
+    storage.complete(MemoryRepository());
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(LaunchArtwork), findsNothing);
   });
 
   testWidgets('startup retries storage errors successfully', (tester) async {

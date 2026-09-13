@@ -34,10 +34,15 @@ flutter:
   assets:
     - assets/logo.png
     - assets/illustrations/google_drive.svg
+    - assets/illustrations/google_drive.svg.vec
+    - assets/illustrations/kot-luy-logo.svg
     - assets/illustrations/kot-luy-logo.svg.vec
     - assets/illustrations/wallet_arrow_up.svg
+    - assets/illustrations/wallet_arrow_up.svg.vec
     - assets/illustrations/wallet-writing.svg
+    - assets/illustrations/wallet-writing.svg.vec
     - assets/illustrations/wallet.svg
+    - assets/illustrations/wallet.svg.vec
   fonts:
     - family: Google Sans
       fonts:
