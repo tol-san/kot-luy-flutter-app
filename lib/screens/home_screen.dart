@@ -19,25 +19,36 @@ import 'package:kot_luy/widgets/home/home_app_bar.dart';
 import 'package:kot_luy/widgets/home/home_report_section.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.repository, this.reminderService});
+  const HomeScreen({
+    super.key,
+    required this.repository,
+    this.reminderService,
+    this.initialExpenses,
+    this.initialCategories,
+    this.initialHasAnyExpenses,
+  });
   final ExpenseRepository repository;
   final ReminderService? reminderService;
+  final List<Expense>? initialExpenses;
+  final List<ExpenseCategory>? initialCategories;
+  final bool? initialHasAnyExpenses;
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  List<Expense> _expenses = [];
-  List<ExpenseCategory> _categories = ExpenseCategory.values;
+  late List<Expense> _expenses = widget.initialExpenses ?? [];
+  late List<ExpenseCategory> _categories =
+      widget.initialCategories ?? ExpenseCategory.values;
   ExpensePeriod _period = ExpensePeriod.month;
   ExpenseCategory? _category;
   String _query = '';
-  bool _loading = true;
+  late bool _loading = widget.initialExpenses == null;
   bool _error = false;
   bool _reports = false;
   bool _search = false;
   bool _isSelecting = false;
-  bool _hasAnyExpenses = false;
+  late bool _hasAnyExpenses = widget.initialHasAnyExpenses ?? false;
   int _loadRequest = 0;
   final Set<int> _selectedIds = {};
   final _searchController = TextEditingController();
@@ -56,7 +67,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         (_) => _openSummary(pendingSummary),
       );
     }
-    _load();
+    if (widget.initialExpenses == null) {
+      _load();
+    } else {
+      unawaited(_syncReminders(clock.now()));
+    }
   }
 
   @override

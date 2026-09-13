@@ -26,7 +26,9 @@ void main() {
   // timezone data, and preferences, none of which should hold up app launch.
   runApp(KotLuyApp(reminderService: reminderService));
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    unawaited(reminderService.initialize());
+    Future.delayed(const Duration(milliseconds: 350), () {
+      unawaited(reminderService.initialize());
+    });
   });
 }
 
