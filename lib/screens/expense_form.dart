@@ -37,6 +37,8 @@ class _ExpenseFormState extends State<ExpenseForm> {
   late final _amount = TextEditingController(
     text: formatRielInput(widget.expense?.amount.toString() ?? ''),
   );
+  late final _note = TextEditingController(text: widget.expense?.note ?? '');
+  late bool _showNote = widget.expense?.note.isNotEmpty ?? false;
   late ExpenseCategory _category =
       widget.expense?.category ?? ExpenseCategory.breakfast;
   List<ExpenseCategory> _categories = ExpenseCategory.values;
@@ -126,6 +128,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
   void dispose() {
     _ticker?.cancel();
     _amount.dispose();
+    _note.dispose();
     super.dispose();
   }
 
@@ -150,7 +153,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
           amount: parseRielInput(_amount.text),
           category: _category,
           date: dateToSave,
-          note: '',
+          note: _note.text.trim(),
         ),
       );
       if (mounted) Navigator.pop(context, true);
@@ -631,6 +634,78 @@ class _ExpenseFormState extends State<ExpenseForm> {
                       ),
                     ),
                   ),
+                const SizedBox(height: 14),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: InkWell(
+                    key: const Key('toggleNoteOption'),
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => setState(() => _showNote = !_showNote),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 2,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _showNote
+                                ? Icons.remove_circle_outline_rounded
+                                : Icons.add_circle_outline_rounded,
+                            size: 16,
+                            color: green,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _showNote
+                                ? 'លាក់កំណត់ចំណាំ'
+                                : '+ បន្ថែមកំណត់ចំណាំ (ជម្រើសបន្ថែម)',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: green,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (_showNote) ...[
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    key: const Key('noteInput'),
+                    controller: _note,
+                    maxLines: 2,
+                    maxLength: 200,
+                    textInputAction: TextInputAction.done,
+                    style: const TextStyle(fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'សរសេរកំណត់ចំណាំទីនេះ... (មិនចាំបាច់)',
+                      hintStyle: const TextStyle(fontSize: 13, color: muted),
+                      counterText: '',
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: line),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: line),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: green, width: 1.5),
+                      ),
+                    ),
+                  ),
+                ],
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 12),

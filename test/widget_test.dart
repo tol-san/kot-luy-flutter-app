@@ -315,6 +315,74 @@ void main() {
       expect(repo.items.single.amount, 25000);
     },
   );
+
+  testWidgets(
+    'note field is hidden by default, can be toggled in advanced options, and persists on save',
+    (tester) async {
+      final repo = MemoryRepository();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: ExpenseForm(repository: repo)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Note input should be hidden by default
+      expect(find.byKey(const Key('noteInput')), findsNothing);
+      expect(find.text('+ បន្ថែមកំណត់ចំណាំ (ជម្រើសបន្ថែម)'), findsOneWidget);
+
+      // Tap toggle to open note input
+      await tester.ensureVisible(find.byKey(const Key('toggleNoteOption')));
+      await tester.tap(find.byKey(const Key('toggleNoteOption')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('noteInput')), findsOneWidget);
+      expect(find.text('លាក់កំណត់ចំណាំ'), findsOneWidget);
+
+      // Enter amount and note
+      await tester.enterText(find.byKey(const Key('amountInput')), '5000');
+      await tester.enterText(
+        find.byKey(const Key('noteInput')),
+        'ទិញនំប៉័ងបន្ថែម',
+      );
+      await tester.ensureVisible(find.byKey(const Key('saveExpense')));
+      await tester.tap(find.byKey(const Key('saveExpense')));
+      await tester.pumpAndSettle();
+
+      expect(repo.items.length, 1);
+      expect(repo.items.single.amount, 5000);
+      expect(repo.items.single.note, 'ទិញនំប៉័ងបន្ថែម');
+    },
+  );
+
+  testWidgets(
+    'editing expense with existing note auto-expands note input with prefilled text',
+    (tester) async {
+      final repo = MemoryRepository();
+      await repo.save(
+        Expense(
+          title: 'បាយព្រឹក',
+          amount: 10000,
+          category: ExpenseCategory.breakfast,
+          date: DateTime(2026, 9, 13),
+          note: 'គុយទាវសាច់គោ',
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ExpenseForm(repository: repo, expense: repo.items.single),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Should be auto-expanded because note is not empty
+      expect(find.byKey(const Key('noteInput')), findsOneWidget);
+      expect(find.text('គុយទាវសាច់គោ'), findsOneWidget);
+      expect(find.text('លាក់កំណត់ចំណាំ'), findsOneWidget);
+    },
+  );
   setUpAll(() async {
     final googleSans = FontLoader('Google Sans')
       ..addFont(rootBundle.load('assets/fonts/GoogleSans-Regular.ttf'))
