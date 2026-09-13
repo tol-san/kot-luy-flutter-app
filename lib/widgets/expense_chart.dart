@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:kot_luy/models/expense.dart';
@@ -21,26 +22,28 @@ class ExpenseChart extends StatelessWidget {
       child: SizedBox(
         width: size,
         height: size,
-        child: CustomPaint(
-          painter: _DonutPainter(totals),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${totals.length}',
-                  style: const TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w700,
-                    color: ink,
-                    height: 1.3,
+        child: RepaintBoundary(
+          child: CustomPaint(
+            painter: _DonutPainter(totals),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${totals.length}',
+                    style: const TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.w700,
+                      color: ink,
+                      height: 1.3,
+                    ),
                   ),
-                ),
-                const Text(
-                  'មុខ',
-                  style: TextStyle(fontSize: 10, color: muted),
-                ),
-              ],
+                  const Text(
+                    'មុខ',
+                    style: TextStyle(fontSize: 10, color: muted),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -80,5 +83,6 @@ class _DonutPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _DonutPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _DonutPainter oldDelegate) =>
+      !mapEquals(oldDelegate.totals, totals);
 }

@@ -188,12 +188,26 @@ class ExpenseRepository {
     await db.delete('categories', where: "id = 'other'");
   }
 
+  List<ExpenseCategory>? _cachedCategories;
+
+  /// Clear the category cache, e.g. after adding, renaming, deleting, or reordering.
+  void invalidateCategoryCache() {
+    _cachedCategories = null;
+  }
+
   Future<List<ExpenseCategory>> getCategories({
     bool includeArchived = false,
   }) async {
+    if (_cachedCategories != null) {
+      return _cachedCategories!
+          .where((c) => includeArchived || !c.isArchived)
+          .toList();
+    }
+
     final rows = await database.query('categories', orderBy: 'sort_order ASC');
     if (rows.isEmpty) {
       await _createCategoriesTable(database);
+      _cachedCategories = ExpenseCategory.values;
       return ExpenseCategory.values;
     }
     final seenLabels = <String>{};
@@ -206,6 +220,7 @@ class ExpenseRepository {
       }
     }
     if (hasDuplicates) {
+      _cachedCategories = null;
       await database.transaction(_deduplicateCategories);
       return getCategories(includeArchived: includeArchived);
     }
@@ -224,11 +239,12 @@ class ExpenseRepository {
       return defaultMatch != null && colorVal != defaultMatch.color.toARGB32();
     });
     if (hasOutdatedColors) {
+      _cachedCategories = null;
       await _refreshCategoryColors(database);
       return getCategories(includeArchived: includeArchived);
     }
 
-    return rows.where((r) => includeArchived || r['is_archived'] != 1).map((r) {
+    final allCategories = rows.map((r) {
       final id = r['id'] as String;
       final label = r['label'] as String;
       final colorVal = r['color_value'] as int;
@@ -251,6 +267,11 @@ class ExpenseRepository {
         isArchived: r['is_archived'] == 1,
       );
     }).toList();
+
+    _cachedCategories = allCategories;
+    return allCategories
+        .where((c) => includeArchived || !c.isArchived)
+        .toList();
   }
 
   Future<ExpenseCategory> addCategory(String label) async {
@@ -284,6 +305,7 @@ class ExpenseRepository {
       'sort_order': nextOrder,
       'is_custom': 1,
     });
+    invalidateCategoryCache();
     unawaited(DriveBackup.dataChanged(database.path));
 
     return ExpenseCategory(
@@ -329,6 +351,7 @@ class ExpenseRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+    invalidateCategoryCache();
     unawaited(DriveBackup.dataChanged(database.path));
   }
 
@@ -362,6 +385,7 @@ class ExpenseRepository {
         await txn.delete('categories', where: 'id = ?', whereArgs: [id]);
       }
     });
+    invalidateCategoryCache();
     unawaited(DriveBackup.dataChanged(database.path));
   }
 
@@ -378,6 +402,7 @@ class ExpenseRepository {
       }
       await batch.commit(noResult: true);
     });
+    invalidateCategoryCache();
     unawaited(DriveBackup.dataChanged(database.path));
   }
 
@@ -441,6 +466,7 @@ class ExpenseRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+    invalidateCategoryCache();
     unawaited(DriveBackup.dataChanged(database.path));
   }
 

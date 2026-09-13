@@ -531,4 +531,45 @@ void main() {
       }
     },
   );
+
+  test(
+    'in-memory category cache serves subsequent reads and invalidates on mutation',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'kot_luy_cache_test_',
+      );
+      final path = '${directory.path}/expenses.db';
+      final repo = await ExpenseRepository.open(
+        factory: databaseFactoryFfi,
+        path: path,
+      );
+      try {
+        final initialCategories = await repo.getCategories();
+        expect(initialCategories.length, ExpenseCategory.values.length);
+
+        // Directly modify database row behind repo's back to prove cache is served
+        await repo.database.rawInsert(
+          "INSERT INTO categories (id, label, color_value, sort_order, is_custom, is_archived) "
+          "VALUES ('manual_ghost', 'Ghost Category', 4280391411, 99, 1, 0)",
+        );
+
+        // Should return cached categories without querying table
+        final cached = await repo.getCategories();
+        expect(cached.any((c) => c.name == 'manual_ghost'), isFalse);
+
+        // Explicit cache invalidation
+        repo.invalidateCategoryCache();
+        final refreshed = await repo.getCategories();
+        expect(refreshed.any((c) => c.name == 'manual_ghost'), isTrue);
+
+        // Add category should auto-invalidate cache
+        await repo.addCategory('សៀវភៅ');
+        final afterAdd = await repo.getCategories();
+        expect(afterAdd.any((c) => c.label == 'សៀវភៅ'), isTrue);
+      } finally {
+        await repo.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
 }

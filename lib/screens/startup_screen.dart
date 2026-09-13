@@ -57,6 +57,7 @@ class _StartupScreenState extends State<StartupScreen> {
       final now = clock.now();
       final start = DateTime(now.year, now.month, 1);
       final end = DateTime(now.year, now.month + 1, 1);
+      final hasAnyExpensesFuture = repo.hasAnyExpenses();
       final categories = await repo.getCategories(includeArchived: true);
       final results = await Future.wait<Object>([
         repo.all(
@@ -65,7 +66,7 @@ class _StartupScreenState extends State<StartupScreen> {
           fromInclusive: start,
           toExclusive: end,
         ),
-        repo.hasAnyExpenses(),
+        hasAnyExpensesFuture,
       ]);
       return StartupData(
         repository: repo,

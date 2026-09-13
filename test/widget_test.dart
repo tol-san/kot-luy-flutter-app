@@ -7,6 +7,7 @@ import 'package:kot_luy/main.dart';
 import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/screens/category_management_sheet.dart';
 import 'package:kot_luy/screens/expense_form.dart';
+import 'package:kot_luy/widgets/expense_chart.dart';
 import 'package:sqflite/sqflite.dart';
 
 class MemoryRepository implements ExpenseRepository {
@@ -68,6 +69,9 @@ class MemoryRepository implements ExpenseRepository {
   @override
   Future<void> deleteMultiple(List<int> ids) async =>
       items.removeWhere((e) => ids.contains(e.id));
+
+  @override
+  void invalidateCategoryCache() {}
 
   @override
   Future<List<ExpenseCategory>> getCategories({
@@ -955,4 +959,40 @@ void main() {
       expect(find.text('បញ្ជីចំណាយ'), findsOneWidget);
     },
   );
+
+  testWidgets('ExpenseChart isolates painting with RepaintBoundary', (
+    tester,
+  ) async {
+    final expenses = [
+      Expense(
+        title: 'បាយព្រឹក',
+        amount: 5000,
+        category: ExpenseCategory.breakfast,
+        date: DateTime(2026, 9, 14),
+      ),
+      Expense(
+        title: 'កាហ្វេ',
+        amount: 6000,
+        category: ExpenseCategory.coffee,
+        date: DateTime(2026, 9, 14),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: ExpenseChart(expenses: expenses)),
+      ),
+    );
+
+    // Verify RepaintBoundary is present directly enclosing CustomPaint
+    expect(
+      find.descendant(
+        of: find.byType(ExpenseChart),
+        matching: find.byType(RepaintBoundary),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('មុខ'), findsOneWidget);
+  });
 }
