@@ -341,8 +341,7 @@ class LocalReminderService implements ReminderService {
     }
     await _scheduleNotification(
       id: _dailyId,
-      title: 'ដល់ពេលកត់ចំណាយហើយ',
-      body: dailyReminderMessage,
+      title: dailyReminderMessage,
       payload: _dailyPayload,
       scheduled: scheduled,
       repeat: DateTimeComponents.time,
