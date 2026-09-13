@@ -672,13 +672,51 @@ class ExpensePdfService {
       );
     }
 
+    pw.Widget categoryCell(Expense e) {
+      final hasNote = e.note.trim().isNotEmpty;
+      return pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          mainAxisSize: pw.MainAxisSize.min,
+          children: [
+            ShapedText(
+              e.category.label,
+              language: 'km',
+              style: ShapedTextStyle(
+                font: boldFont,
+                fontSize: 8.5,
+                color: darkInk,
+                align: ShapedTextAlign.start,
+                preserveUnicodeText: false,
+              ),
+            ),
+            if (hasNote) ...[
+              pw.SizedBox(height: 2),
+              ShapedText(
+                e.note.trim(),
+                language: 'km',
+                style: ShapedTextStyle(
+                  font: regularFont,
+                  fontSize: 7.5,
+                  color: mutedText,
+                  align: ShapedTextAlign.start,
+                  preserveUnicodeText: false,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
     return pw.Table(
       border: pw.TableBorder.all(color: borderColor, width: 0.5),
       columnWidths: {
-        0: const pw.FixedColumnWidth(30),
-        1: const pw.FlexColumnWidth(2.6),
-        2: const pw.FlexColumnWidth(2.4),
-        3: const pw.FlexColumnWidth(2),
+        0: const pw.FixedColumnWidth(26),
+        1: const pw.FlexColumnWidth(2.0),
+        2: const pw.FlexColumnWidth(3.6),
+        3: const pw.FlexColumnWidth(1.6),
       },
       children: [
         pw.TableRow(
@@ -737,13 +775,7 @@ class ExpensePdfService {
                 color: darkInk,
                 align: ShapedTextAlign.start,
               ),
-              cell(
-                e.category.label,
-                font: regularFont,
-                fontSize: 8.5,
-                color: darkInk,
-                align: ShapedTextAlign.start,
-              ),
+              categoryCell(e),
               cell(
                 riel(e.amount),
                 font: regularFont,
