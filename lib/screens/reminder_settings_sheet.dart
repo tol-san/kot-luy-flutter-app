@@ -190,7 +190,7 @@ class _ReminderSettingsSheetState extends State<ReminderSettingsSheet>
                 _ReminderCard(
                   kind: ReminderKind.weekly,
                   title: 'សង្ខេបចំណាយប្រចាំសប្ដាហ៍',
-                  subtitle: 'ផ្ញើរៀងរាល់ថ្ងៃអាទិត្យ',
+                  subtitle: 'ផ្ញើរៀងរាល់ថ្ងៃចន្ទ',
                   settings: _settings,
                   saving: _saving,
                   onToggle: _toggle,
@@ -200,7 +200,7 @@ class _ReminderSettingsSheetState extends State<ReminderSettingsSheet>
                 _ReminderCard(
                   kind: ReminderKind.monthly,
                   title: 'សង្ខេបចំណាយប្រចាំខែ',
-                  subtitle: 'ផ្ញើនៅថ្ងៃចុងក្រោយនៃខែ',
+                  subtitle: 'ផ្ញើនៅថ្ងៃទី១នៃខែ',
                   settings: _settings,
                   saving: _saving,
                   onToggle: _toggle,

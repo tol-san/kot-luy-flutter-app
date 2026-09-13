@@ -81,6 +81,14 @@ void main() {
     expect(settings.dailyEnabled, isFalse);
     expect(settings.weeklyEnabled, isFalse);
     expect(settings.monthlyEnabled, isFalse);
+    expect(settings.dailyTime, const TimeOfDay(hour: 20, minute: 0));
+    expect(settings.weeklyTime, const TimeOfDay(hour: 9, minute: 0));
+    expect(settings.monthlyTime, const TimeOfDay(hour: 9, minute: 0));
+
+    const defaults = ReminderSettings.defaults();
+    expect(defaults.dailyTime, const TimeOfDay(hour: 20, minute: 0));
+    expect(defaults.weeklyTime, const TimeOfDay(hour: 9, minute: 0));
+    expect(defaults.monthlyTime, const TimeOfDay(hour: 9, minute: 0));
   });
 
   Future<void> mount(WidgetTester tester, FakeReminderService service) async {
@@ -103,6 +111,7 @@ void main() {
 
     expect(find.text('សង្ខេបចំណាយប្រចាំសប្ដាហ៍'), findsOneWidget);
     expect(find.text('សង្ខេបចំណាយប្រចាំខែ'), findsOneWidget);
+    expect(find.text('បិទ'), findsNWidgets(3));
     expect(
       tester
           .widget<SwitchListTile>(
@@ -125,6 +134,7 @@ void main() {
     expect(service.setEnabledCalls, 1);
     expect(service.settings.weeklyEnabled, isTrue);
     expect(find.byKey(const Key('weeklyReminderTimeButton')), findsOneWidget);
+    expect(find.textContaining('ផ្ញើរៀងរាល់ថ្ងៃចន្ទ'), findsOneWidget);
   });
 
   testWidgets('denied access leaves the selected reminder off', (tester) async {

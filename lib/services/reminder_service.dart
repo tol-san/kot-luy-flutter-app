@@ -34,9 +34,9 @@ class ReminderSettings {
     : dailyEnabled = false,
       dailyTime = const TimeOfDay(hour: 20, minute: 0),
       weeklyEnabled = false,
-      weeklyTime = const TimeOfDay(hour: 20, minute: 0),
+      weeklyTime = const TimeOfDay(hour: 9, minute: 0),
       monthlyEnabled = false,
-      monthlyTime = const TimeOfDay(hour: 20, minute: 0);
+      monthlyTime = const TimeOfDay(hour: 9, minute: 0);
 
   final bool dailyEnabled;
   final TimeOfDay dailyTime;
@@ -265,12 +265,12 @@ class LocalReminderService implements ReminderService {
       ),
       weeklyEnabled: preferences.getBool('weekly_reminder_enabled') ?? false,
       weeklyTime: TimeOfDay(
-        hour: preferences.getInt('weekly_reminder_hour') ?? 20,
+        hour: preferences.getInt('weekly_reminder_hour') ?? 9,
         minute: preferences.getInt('weekly_reminder_minute') ?? 0,
       ),
       monthlyEnabled: preferences.getBool('monthly_reminder_enabled') ?? false,
       monthlyTime: TimeOfDay(
-        hour: preferences.getInt('monthly_reminder_hour') ?? 20,
+        hour: preferences.getInt('monthly_reminder_hour') ?? 9,
         minute: preferences.getInt('monthly_reminder_minute') ?? 0,
       ),
     );
@@ -351,8 +351,8 @@ class LocalReminderService implements ReminderService {
   Future<void> _scheduleWeekly(TimeOfDay time) async {
     final now = tz.TZDateTime.now(tz.local);
     var scheduled = _atTime(now, time);
-    final daysToSunday = (DateTime.sunday - scheduled.weekday) % 7;
-    scheduled = scheduled.add(Duration(days: daysToSunday));
+    final daysToMonday = (DateTime.monday - scheduled.weekday + 7) % 7;
+    scheduled = scheduled.add(Duration(days: daysToMonday));
     if (!scheduled.isAfter(now)) {
       scheduled = scheduled.add(const Duration(days: 7));
     }
@@ -367,22 +367,20 @@ class LocalReminderService implements ReminderService {
 
   Future<void> _scheduleMonthly(TimeOfDay time) async {
     final now = tz.TZDateTime.now(tz.local);
-    final lastDay = DateTime(now.year, now.month + 1, 0).day;
     var scheduled = tz.TZDateTime(
       tz.local,
       now.year,
       now.month,
-      lastDay,
+      1,
       time.hour,
       time.minute,
     );
     if (!scheduled.isAfter(now)) {
-      final nextLastDay = DateTime(now.year, now.month + 2, 0);
       scheduled = tz.TZDateTime(
         tz.local,
-        nextLastDay.year,
-        nextLastDay.month,
-        nextLastDay.day,
+        now.year,
+        now.month + 1,
+        1,
         time.hour,
         time.minute,
       );
@@ -392,6 +390,7 @@ class LocalReminderService implements ReminderService {
       title: monthlyReminderMessage(_monthlyAmount),
       payload: _monthlyPayload,
       scheduled: scheduled,
+      repeat: DateTimeComponents.dayOfMonthAndTime,
     );
   }
 
