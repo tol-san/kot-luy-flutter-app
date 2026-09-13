@@ -5,11 +5,18 @@
         <item name="android:windowSplashScreenBackground">@color/launch_paper</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/launch_icon</item>
         <item name="android:windowSplashScreenAnimationDuration">0</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:statusBarColor">@color/launch_paper</item>
         <item name="android:navigationBarColor">@color/launch_paper</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@color/launch_paper</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@color/launch_paper</item>
+        <item name="android:navigationBarColor">@color/launch_paper</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>
