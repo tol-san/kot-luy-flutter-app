@@ -94,6 +94,10 @@ void main() {
         await repo.database.execute(
           'ALTER TABLE categories DROP COLUMN is_archived',
         );
+        await repo.database.execute('DROP TABLE expenses');
+        await repo.database.execute(
+          "CREATE TABLE expenses (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, amount INTEGER NOT NULL, category TEXT NOT NULL, date INTEGER NOT NULL, note TEXT NOT NULL DEFAULT '')",
+        );
         for (final id in ['other', 'duplicate']) {
           await repo.database.insert('categories', {
             'id': id,
@@ -117,16 +121,16 @@ void main() {
           factory: databaseFactoryFfi,
           path: path,
         );
-        expect(await repo.database.getVersion(), 5);
+        expect(await repo.database.getVersion(), 6);
         final expenses = await repo.all();
         expect(expenses.length, 2);
         expect(
-          expenses.firstWhere((e) => e.title == 'other').category.name,
-          'breakfast',
+          expenses.any((e) => e.category.name == 'breakfast'),
+          isTrue,
         );
         expect(
-          expenses.firstWhere((e) => e.title == 'duplicate').category.name,
-          'lunch',
+          expenses.any((e) => e.category.name == 'lunch'),
+          isTrue,
         );
         expect(
           expenses.every(
@@ -262,8 +266,7 @@ void main() {
         await expectLater(
           repo.save(
             Expense(
-              title: ' ',
-              amount: 100,
+              amount: 1000000000000,
               category: ExpenseCategory.lunch,
               date: DateTime.now(),
             ),

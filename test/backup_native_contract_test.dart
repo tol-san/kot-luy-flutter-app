@@ -13,7 +13,7 @@ void main() {
       sqfliteFfiInit();
       final directory = Directory('build/backup-contract')
         ..createSync(recursive: true);
-      for (final oldVersion in [0, 2, 3, 4]) {
+      for (final oldVersion in [0, 2, 3, 4, 5]) {
         final path = '${directory.absolute.path}/repository-$oldVersion.db';
         await databaseFactoryFfi.deleteDatabase(path);
         if (oldVersion != 0) {
@@ -48,7 +48,6 @@ void main() {
           whereArgs: [category],
         );
         await db.insert('expenses', {
-          'title': 'បាយ',
           'amount': 999999999999,
           'category': category,
           'date': 1725600000000,

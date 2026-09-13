@@ -145,11 +145,9 @@ class _ExpenseFormState extends State<ExpenseForm> {
       _error = null;
     });
     try {
-      final title = _category.label;
       await widget.repository.save(
         Expense(
           id: widget.expense?.id,
-          title: title,
           amount: parseRielInput(_amount.text),
           category: _category,
           date: dateToSave,

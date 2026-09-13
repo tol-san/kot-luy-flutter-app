@@ -31,7 +31,7 @@ class DriveBackupSnapshotTest {
     @Test
     fun snapshotSupportsHistoricalSchemasAndLeavesLiveDatabaseWritable() {
         val context: android.app.Application = RuntimeEnvironment.getApplication()
-        for (version in 2..5) {
+        for (version in 2..6) {
             val path = context.getDatabasePath("snapshot-$version.db")
             path.parentFile!!.mkdirs()
             SQLiteDatabase.openOrCreateDatabase(path, null).use { live ->
@@ -43,7 +43,7 @@ class DriveBackupSnapshotTest {
                 val backup = DriveBackup(context)
                 backup.changed(path.path)
                 val snapshot = backup.snapshot()
-                assertEquals(2, snapshot.getInt("schemaVersion"))
+                assertEquals(if (version >= 6) 3 else 2, snapshot.getInt("schemaVersion"))
                 assertEquals("kot_luy_backup", snapshot.getString("format"))
                 assertEquals(1, snapshot.getJSONArray("expenses").length())
                 assertEquals(999999999999L, snapshot.getJSONArray("expenses").getJSONObject(0).getLong("amount"))
@@ -62,7 +62,7 @@ class DriveBackupSnapshotTest {
     @Test
     fun snapshotReadsActualCurrentAndMigratedFlutterDatabases() {
         val context: android.app.Application = RuntimeEnvironment.getApplication()
-        for (oldVersion in listOf(0, 2, 3, 4)) {
+        for (oldVersion in listOf(0, 2, 3, 4, 5)) {
             val source = File("../../build/backup-contract/repository-$oldVersion.db")
             assertTrue("Run flutter test test/backup_native_contract_test.dart first", source.isFile)
             val path = context.getDatabasePath("actual-$oldVersion.db")
@@ -71,10 +71,10 @@ class DriveBackupSnapshotTest {
             val backup = DriveBackup(context)
             backup.changed(path.path)
             val snapshot = backup.snapshot()
-            assertEquals(2, snapshot.getInt("schemaVersion"))
+            assertEquals(3, snapshot.getInt("schemaVersion"))
             val expense = snapshot.getJSONArray("expenses").getJSONObject(0)
             assertEquals(999999999999L, expense.getLong("amount"))
-            assertEquals("បាយ", expense.getString("title"))
+            assertFalse(expense.has("title"))
             val categories = snapshot.getJSONArray("categories")
             val category = (0 until categories.length()).map { categories.getJSONObject(it) }
                 .first { it.getString("id") == expense.getString("category") }

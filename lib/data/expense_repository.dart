@@ -24,17 +24,19 @@ class ExpenseRepository {
     final db = await dbFactory.openDatabase(
       location,
       options: OpenDatabaseOptions(
-        version: 5,
+        version: 6,
         onCreate: (db, version) async {
           await db.execute('''CREATE TABLE expenses (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          title TEXT NOT NULL,
           amount INTEGER NOT NULL CHECK(amount > 0 AND amount <= 999999999999),
           category TEXT NOT NULL,
           date INTEGER NOT NULL,
           note TEXT NOT NULL DEFAULT ''
         )''');
           await db.execute('CREATE INDEX expenses_date ON expenses(date DESC)');
+          await db.execute(
+            'CREATE INDEX expenses_category ON expenses(category)',
+          );
           await _createCategoriesTable(db);
         },
         onUpgrade: (db, oldVersion, newVersion) async {
@@ -58,6 +60,9 @@ class ExpenseRepository {
           }
           if (oldVersion < 5) {
             await _refreshCategoryColors(db);
+          }
+          if (oldVersion < 6) {
+            await _migrateToV6(db);
           }
         },
       ),
@@ -101,6 +106,30 @@ class ExpenseRepository {
         whereArgs: [id],
       );
     }
+  }
+
+  static Future<void> _migrateToV6(DatabaseExecutor db) async {
+    final columns = await db.rawQuery('PRAGMA table_info(expenses)');
+    final hasTitle = columns.any((column) => column['name'] == 'title');
+    if (hasTitle) {
+      await db.execute('''CREATE TABLE expenses_v6 (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        amount INTEGER NOT NULL CHECK(amount > 0 AND amount <= 999999999999),
+        category TEXT NOT NULL,
+        date INTEGER NOT NULL,
+        note TEXT NOT NULL DEFAULT ''
+      )''');
+      await db.execute('''
+        INSERT INTO expenses_v6 (id, amount, category, date, note)
+        SELECT id, amount, category, date, COALESCE(note, '') FROM expenses
+      ''');
+      await db.execute('DROP TABLE expenses');
+      await db.execute('ALTER TABLE expenses_v6 RENAME TO expenses');
+      await db.execute('CREATE INDEX expenses_date ON expenses(date DESC)');
+    }
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS expenses_category ON expenses(category)',
+    );
   }
 
   static Future<void> _deduplicateCategories(DatabaseExecutor db) async {
@@ -296,21 +325,12 @@ class ExpenseRepository {
       }
     }
     if (target == null) throw StateError('មុខចំណាយនេះលែងមានទៀតហើយ');
-    await database.transaction((txn) async {
-      await txn.update(
-        'categories',
-        {'label': clean},
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      // A category is the single source of truth for an expense name.
-      await txn.update(
-        'expenses',
-        {'title': clean},
-        where: 'category = ?',
-        whereArgs: [id],
-      );
-    });
+    await database.update(
+      'categories',
+      {'label': clean},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
     unawaited(DriveBackup.dataChanged(database.path));
   }
 
@@ -427,9 +447,7 @@ class ExpenseRepository {
   }
 
   Future<void> save(Expense expense) async {
-    if (expense.title.trim().isEmpty ||
-        expense.amount <= 0 ||
-        expense.amount > 999999999999) {
+    if (expense.amount <= 0 || expense.amount > 999999999999) {
       throw ArgumentError('Invalid expense');
     }
     if (expense.id == null) {

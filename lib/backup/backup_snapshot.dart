@@ -18,7 +18,7 @@ class BackupSnapshot {
     if (data is! Map ||
         data['format'] != 'kot_luy_backup' ||
         data['version'] != 1 ||
-        data['schemaVersion'] != 2 ||
+        (data['schemaVersion'] != 2 && data['schemaVersion'] != 3) ||
         data['createdAt'] is! int ||
         data['expenses'] is! List ||
         data['categories'] is! List) {
@@ -68,11 +68,10 @@ class BackupSnapshot {
       // Older local records may refer to deleted categories; retain the name.
       expenses.add({
         'id': id,
-        'title': string(row['title']),
         'amount': number(row['amount'], 1, 999999999999),
         'category': category,
         'date': number(row['date'], -8640000000000000, 8640000000000000),
-        'note': string(row['note'], empty: true),
+        'note': string(row['note'] ?? '', empty: true),
       });
     }
     return BackupSnapshot._(
@@ -87,7 +86,7 @@ class BackupSnapshot {
   static Future<String> capture(DatabaseExecutor db) async => jsonEncode({
     'format': 'kot_luy_backup',
     'version': 1,
-    'schemaVersion': 2,
+    'schemaVersion': 3,
     'createdAt': DateTime.now().millisecondsSinceEpoch,
     'expenses': await db.query('expenses', orderBy: 'id ASC'),
     'categories': await db.query(

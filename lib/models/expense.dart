@@ -200,21 +200,20 @@ extension ExpenseCategoryListExt on Iterable<ExpenseCategory> {
 class Expense {
   const Expense({
     this.id,
-    required this.title,
+    @Deprecated('Use category instead') String? title,
     required this.amount,
     required this.category,
     required this.date,
     this.note = '',
   });
   final int? id;
-  final String title;
+  String get title => category.label;
   final int amount;
   final ExpenseCategory category;
   final DateTime date;
   final String note;
   Map<String, Object?> toMap() => {
     'id': id,
-    'title': title,
     'amount': amount,
     'category': category.name,
     'date': date.millisecondsSinceEpoch,
@@ -225,11 +224,10 @@ class Expense {
     List<ExpenseCategory>? categories,
   ]) => Expense(
     id: map['id'] as int?,
-    title: map['title'] as String,
     amount: map['amount'] as int,
     category: ExpenseCategory.fromName(map['category'] as String, categories),
     date: DateTime.fromMillisecondsSinceEpoch(map['date'] as int),
-    note: map['note'] as String,
+    note: (map['note'] as String?) ?? '',
   );
 }
 

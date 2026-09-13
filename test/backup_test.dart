@@ -71,7 +71,6 @@ void main() {
       )''');
       await db.execute('''CREATE TABLE expenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
         amount INTEGER NOT NULL CHECK(amount > 0 AND amount <= 999999999999),
         category TEXT NOT NULL,
         date INTEGER NOT NULL,
@@ -87,7 +86,6 @@ void main() {
       });
       await db.insert('expenses', {
         'id': 1,
-        'title': 'បាយសាច់ជ្រូក',
         'amount': 6000,
         'category': 'lunch',
         'date': 1725600000000,
@@ -102,12 +100,13 @@ void main() {
     test('capture generates valid JSON and parse restores it', () async {
       final jsonString = await BackupSnapshot.capture(db);
       expect(jsonString, contains('kot_luy_backup'));
-      expect(jsonString, contains('បាយសាច់ជ្រូក'));
+      expect(jsonString, contains('"schemaVersion":3'));
 
       final snapshot = BackupSnapshot.parse(jsonString);
       expect(snapshot.expenses.length, 1);
       expect(snapshot.categories.length, 1);
-      expect(snapshot.expenses.first['title'], 'បាយសាច់ជ្រូក');
+      expect(snapshot.expenses.first['amount'], 6000);
+      expect(snapshot.expenses.first['category'], 'lunch');
       expect(snapshot.categories.first['id'], 'lunch');
     });
 
@@ -127,6 +126,45 @@ void main() {
       },
     );
 
+    test('restores legacy schemaVersion: 2 backup containing title successfully', () async {
+      final legacyJson = jsonEncode({
+        'format': 'kot_luy_backup',
+        'version': 1,
+        'schemaVersion': 2,
+        'createdAt': 1725600000000,
+        'categories': [
+          {
+            'id': 'lunch',
+            'label': 'បាយថ្ងៃត្រង់',
+            'color_value': 0xFF35634B,
+            'sort_order': 0,
+            'is_custom': 0,
+            'is_archived': 0,
+          }
+        ],
+        'expenses': [
+          {
+            'id': 10,
+            'title': 'ចំណាយចាស់',
+            'amount': 15000,
+            'category': 'lunch',
+            'date': 1725600000000,
+            'note': 'Legacy backup from drive',
+          }
+        ],
+      });
+
+      final snapshot = BackupSnapshot.parse(legacyJson);
+      await snapshot.restore(db);
+
+      final rows = await db.query('expenses');
+      expect(rows.length, 1);
+      expect(rows.first['id'], 10);
+      expect(rows.first['amount'], 15000);
+      expect(rows.first['category'], 'lunch');
+      expect(rows.first['note'], 'Legacy backup from drive');
+    });
+
     test('rejects invalid JSON structure', () {
       expect(
         () => BackupSnapshot.parse('{"invalid": true}'),
@@ -137,7 +175,7 @@ void main() {
           jsonEncode({
             'format': 'wrong_format',
             'version': 1,
-            'schemaVersion': 2,
+            'schemaVersion': 3,
             'createdAt': 12345,
             'expenses': [],
             'categories': [],
@@ -162,7 +200,8 @@ void main() {
       // Verify restored
       expenses = await db.query('expenses');
       expect(expenses.length, 1);
-      expect(expenses.first['title'], 'បាយសាច់ជ្រូក');
+      expect(expenses.first['amount'], 6000);
+      expect(expenses.first['category'], 'lunch');
 
       // Verify safety copy was created during restore
       final safety = await BackupSnapshot.safetyCopy(db);
