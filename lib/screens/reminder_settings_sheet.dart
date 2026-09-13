@@ -77,28 +77,40 @@ class _ReminderSettingsSheetState extends State<ReminderSettingsSheet>
       return;
     }
     setState(() => _saving = null);
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('មិនអាចបើកការរំលឹកបានទេ'),
-        content: const Text(
-          'ការជូនដំណឹងត្រូវបានបិទក្នុងទូរស័ព្ទរបស់អ្នក។ សូមបើកការកំណត់ទូរស័ព្ទ ហើយចុច «អនុញ្ញាតការជូនដំណឹង»។',
+    final permissionAllowed =
+        await widget.reminderService.isPermissionAllowed();
+    if (!mounted) return;
+    if (!permissionAllowed) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('មិនអាចបើកការរំលឹកបានទេ'),
+          content: const Text(
+            'ការជូនដំណឹងត្រូវបានបិទក្នុងទូរស័ព្ទរបស់អ្នក។ សូមបើកការកំណត់ទូរស័ព្ទ ហើយចុច «អនុញ្ញាតការជូនដំណឹង»។',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('បោះបង់'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                widget.reminderService.openSystemNotificationSettings();
+              },
+              child: const Text('បើកការកំណត់'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('បោះបង់'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              widget.reminderService.openSystemNotificationSettings();
-            },
-            child: const Text('បើកការកំណត់'),
-          ),
-        ],
-      ),
-    );
+      );
+    } else {
+      rootMessengerKey.currentState?.showSnackBar(
+        const SnackBar(
+          content: Text('មិនអាចកំណត់ការរំលឹកបានទេ។ សូមសាកល្បងម្ដងទៀត។'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _pickTime(ReminderKind kind) async {

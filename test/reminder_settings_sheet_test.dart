@@ -9,10 +9,12 @@ class FakeReminderService implements ReminderService {
   FakeReminderService({
     this.settings = const ReminderSettings.defaults(),
     this.permissionGranted = true,
+    this.shouldSucceed = true,
   });
 
   ReminderSettings settings;
   bool permissionGranted;
+  bool shouldSucceed;
   int setEnabledCalls = 0;
   int updateTimeCalls = 0;
   int openSystemSettingsCalls = 0;
@@ -34,7 +36,7 @@ class FakeReminderService implements ReminderService {
   @override
   Future<bool> setEnabled(ReminderKind kind, bool enabled) async {
     setEnabledCalls++;
-    if (!permissionGranted) return false;
+    if (!permissionGranted || !shouldSucceed) return false;
     settings = settings.copyWith(kind: kind, enabled: enabled);
     return true;
   }
@@ -55,6 +57,9 @@ class FakeReminderService implements ReminderService {
   Future<void> openSystemNotificationSettings() async {
     openSystemSettingsCalls++;
   }
+
+  @override
+  Future<bool> isPermissionAllowed() async => permissionGranted;
 
   @override
   bool takePendingOpenExpense() => false;
@@ -150,4 +155,25 @@ void main() {
     expect(service.settings.dailyEnabled, isFalse);
     expect(find.byKey(const Key('dailyReminderTimeButton')), findsNothing);
   });
+
+  testWidgets(
+    'scheduling error with permission allowed shows snackbar without dialog',
+    (tester) async {
+      final service = FakeReminderService(
+        permissionGranted: true,
+        shouldSucceed: false,
+      );
+      await mount(tester, service);
+
+      await tester.tap(find.byKey(const Key('dailyReminderSwitch')));
+      await tester.pumpAndSettle();
+
+      expect(service.settings.dailyEnabled, isFalse);
+      expect(find.textContaining('មិនអាចបើកការរំលឹកបានទេ'), findsNothing);
+      expect(
+        find.text('មិនអាចកំណត់ការរំលឹកបានទេ។ សូមសាកល្បងម្ដងទៀត។'),
+        findsOneWidget,
+      );
+    },
+  );
 }

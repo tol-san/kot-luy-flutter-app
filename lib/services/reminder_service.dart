@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'package:kot_luy/models/expense.dart';
@@ -96,6 +96,7 @@ abstract class ReminderService {
     required int monthlyAmount,
   });
   Future<void> openSystemNotificationSettings();
+  Future<bool> isPermissionAllowed();
   bool takePendingOpenExpense();
   ReminderKind? takePendingSummary();
 }
@@ -130,6 +131,9 @@ class LocalReminderService implements ReminderService {
           defaultTargetPlatform == TargetPlatform.iOS);
 
   @override
+  Future<bool> isPermissionAllowed() => _permissionAllowed();
+
+  @override
   Future<void> initialize() => _initialization ??= _initialize();
 
   Future<void> _initialize() async {
@@ -140,7 +144,15 @@ class LocalReminderService implements ReminderService {
         final timezone = await FlutterTimezone.getLocalTimezone();
         tz.setLocalLocation(tz.getLocation(timezone.identifier));
       } catch (_) {
-        tz.setLocalLocation(tz.getLocation('Asia/Phnom_Penh'));
+        try {
+          tz.setLocalLocation(tz.getLocation('Asia/Phnom_Penh'));
+        } catch (_) {
+          try {
+            tz.setLocalLocation(tz.getLocation('Asia/Bangkok'));
+          } catch (_) {
+            tz.setLocalLocation(tz.UTC);
+          }
+        }
       }
       const initialization = InitializationSettings(
         android: AndroidInitializationSettings('ic_notification'),
