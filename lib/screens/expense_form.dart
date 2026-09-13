@@ -660,7 +660,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                           Text(
                             _showNote
                                 ? 'លាក់កំណត់ចំណាំ'
-                                : '+ បន្ថែមកំណត់ចំណាំ (ជម្រើសបន្ថែម)',
+                                : '+ បន្ថែមកំណត់ចំណាំ',
                             style: const TextStyle(
                               fontSize: 12,
                               color: green,
@@ -682,7 +682,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                     textInputAction: TextInputAction.done,
                     style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: 'សរសេរកំណត់ចំណាំទីនេះ... (មិនចាំបាច់)',
+                      hintText: 'សរសេរកំណត់ចំណាំ...',
                       hintStyle: const TextStyle(fontSize: 13, color: muted),
                       counterText: '',
                       filled: true,

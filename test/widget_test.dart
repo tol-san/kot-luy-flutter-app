@@ -329,7 +329,7 @@ void main() {
 
       // Note input should be hidden by default
       expect(find.byKey(const Key('noteInput')), findsNothing);
-      expect(find.text('+ បន្ថែមកំណត់ចំណាំ (ជម្រើសបន្ថែម)'), findsOneWidget);
+      expect(find.text('+ បន្ថែមកំណត់ចំណាំ'), findsOneWidget);
 
       // Tap toggle to open note input
       await tester.ensureVisible(find.byKey(const Key('toggleNoteOption')));
