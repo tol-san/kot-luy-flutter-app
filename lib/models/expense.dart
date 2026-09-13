@@ -189,6 +189,8 @@ extension ExpenseCategoryListExt on Iterable<ExpenseCategory> {
 }
 
 class Expense {
+  static const maxNoteLength = 50;
+
   const Expense({
     this.id,
     @Deprecated('Use category instead') String? title,

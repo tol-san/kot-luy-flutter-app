@@ -675,8 +675,8 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   TextFormField(
                     key: const Key('noteInput'),
                     controller: _note,
-                    maxLines: 2,
-                    maxLength: 200,
+                    maxLines: 1,
+                    maxLength: Expense.maxNoteLength,
                     textInputAction: TextInputAction.done,
                     style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(
