@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kot_luy/data/expense_repository.dart';
+import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/screens/home_screen.dart';
 import 'package:kot_luy/screens/startup_screen.dart';
 import 'package:kot_luy/theme.dart';
@@ -100,5 +101,31 @@ void main() {
       matchesGoldenFile('previews/launch.png'),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('HomeScreen renders initialExpenses immediately on cold start', (
+    tester,
+  ) async {
+    final repo = MemoryRepository();
+    final item = Expense(
+      id: 99,
+      title: 'កាហ្វេព្រឹក',
+      amount: 6000,
+      category: ExpenseCategory.coffee,
+      date: DateTime.now(),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme(),
+        home: HomeScreen(
+          repository: repo,
+          initialExpenses: [item],
+          initialCategories: ExpenseCategory.values,
+          initialHasAnyExpenses: true,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('6,000 ៛'), findsOneWidget);
   });
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
@@ -69,7 +71,13 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
 
   Future<void> _loadExpenses() async {
     try {
-      final items = await widget.repository.all();
+      final config = _currentConfig;
+      // ✅ Filter ក្នុង SQL — load តែ period ដែលជ្រើស ជំនួស load ទាំងអស់
+      final items = await widget.repository.all(
+        fromInclusive: config.startDate,
+        // endDate inclusive → add 1ms to make toExclusive
+        toExclusive: config.endDate.add(const Duration(milliseconds: 1)),
+      );
       if (mounted) {
         setState(() {
           _allExpenses = items;
@@ -90,8 +98,14 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
     weekStart: _selectedWeekStart,
   );
 
-  List<Expense> get _filteredExpenses =>
-      _currentConfig.filterExpenses(_allExpenses);
+  // ✅ _allExpenses ត្រូវ filter ក្នុង SQL រួចហើយ — return ដោយផ្ទាល់
+  List<Expense> get _filteredExpenses => _allExpenses;
+
+  /// Reload from DB with new period filter ពេល user ផ្លាស់ប្ដូរ period type / sub-period
+  Future<void> _reloadForPeriod() async {
+    setState(() => _loading = true);
+    await _loadExpenses();
+  }
 
   Future<void> _previewAndPrint() async {
     if (_generating) return;
@@ -295,7 +309,10 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
               label: Text(type.label),
               selected: isSelected,
               showCheckmark: false,
-              onSelected: (_) => setState(() => _periodType = type),
+              onSelected: (_) {
+                setState(() => _periodType = type);
+                unawaited(_reloadForPeriod()); // ✅ reload DB ជាមួយ period ថ្មី
+              },
               selectedColor: const Color(0xFFEAF0E1),
               backgroundColor: Colors.white,
               labelStyle: TextStyle(
@@ -390,7 +407,10 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            onPressed: () => setState(() => _selectedWeekStart = thisWeekStart),
+            onPressed: () {
+              setState(() => _selectedWeekStart = thisWeekStart);
+              unawaited(_reloadForPeriod());
+            },
             child: Text(
               'សប្ដាហ៍នេះ',
               style: TextStyle(
@@ -413,7 +433,10 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            onPressed: () => setState(() => _selectedWeekStart = lastWeekStart),
+            onPressed: () {
+              setState(() => _selectedWeekStart = lastWeekStart);
+              unawaited(_reloadForPeriod());
+            },
             child: Text(
               'សប្ដាហ៍មុន',
               style: TextStyle(
@@ -458,7 +481,10 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
     return InkWell(
       key: Key('pdf_month_$monthNum'),
       borderRadius: BorderRadius.circular(10),
-      onTap: () => setState(() => _selectedMonth = monthNum),
+      onTap: () {
+        setState(() => _selectedMonth = monthNum);
+        unawaited(_reloadForPeriod());
+      },
       child: AnimatedContainer(
         duration: _transitionDuration,
         curve: Curves.easeInOutCubic,
@@ -503,7 +529,10 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
             child: InkWell(
               key: Key('pdf_quarter_${q.$1}'),
               borderRadius: BorderRadius.circular(12),
-              onTap: () => setState(() => _selectedQuarter = q.$1),
+              onTap: () {
+                setState(() => _selectedQuarter = q.$1);
+                unawaited(_reloadForPeriod());
+              },
               child: AnimatedContainer(
                 duration: _transitionDuration,
                 curve: Curves.easeInOutCubic,
@@ -563,7 +592,10 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
             child: InkWell(
               key: Key('pdf_semester_${s.$1}'),
               borderRadius: BorderRadius.circular(12),
-              onTap: () => setState(() => _selectedSemester = s.$1),
+              onTap: () {
+                setState(() => _selectedSemester = s.$1);
+                unawaited(_reloadForPeriod());
+              },
               child: AnimatedContainer(
                 duration: _transitionDuration,
                 curve: Curves.easeInOutCubic,
@@ -629,7 +661,10 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
               label: Text('$y'),
               selected: isSelected,
               showCheckmark: false,
-              onSelected: (_) => setState(() => _selectedYear = y),
+              onSelected: (_) {
+                setState(() => _selectedYear = y);
+                unawaited(_reloadForPeriod());
+              },
               selectedColor: const Color(0xFFEAF0E1),
               backgroundColor: Colors.white,
               labelStyle: TextStyle(
@@ -652,37 +687,72 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
   }
 
   Widget _buildPreviewCard(int count, int total) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5EB),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: line),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _currentConfig.khmerPeriodTitle,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: ink,
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5EB),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: line),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _currentConfig.khmerPeriodTitle,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'រកឃើញចំណាយចំនួន $count ប្រតិបត្តិការ • សរុប ${riel(total)}',
+                      style: const TextStyle(fontSize: 11, color: muted),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'រកឃើញចំណាយចំនួន $count ប្រតិបត្តិការ • សរុប ${riel(total)}',
-                  style: const TextStyle(fontSize: 11, color: muted),
+              ),
+            ],
+          ),
+        ),
+        if (count > 1000) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFFE082)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: Color(0xFFB78103),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'ចំណាយ $count ប្រតិបត្តិការ — PDF អាចមានទំព័រច្រើន។ ណែនាំជ្រើសរើសរយៈពេលខ្លីជាងនេះដើម្បីងាយស្រួលអាន។',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF795548),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 

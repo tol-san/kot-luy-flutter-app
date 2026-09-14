@@ -137,6 +137,15 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                 }
+                "setPath" -> {
+                    val path = call.argument<String>("path")
+                    if (path != null) {
+                        try {
+                            driveBackup.setPath(path)
+                        } catch (_: Exception) {}
+                    }
+                    result.success(null)
+                }
                 "changed" -> {
                     val path = call.argument<String>("path")
                     if (path != null) {

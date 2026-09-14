@@ -49,13 +49,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _reports = false;
   bool _search = false;
   bool _isSelecting = false;
+  bool _isDeleting = false;
   late bool _hasAnyExpenses = widget.initialHasAnyExpenses ?? false;
   int _loadRequest = 0;
   final Set<int> _selectedIds = {};
   final _searchController = TextEditingController();
+
+  // ---- Cache: ការពារ loop ២ ដងរៀងរាល់ build() ----
+  List<Expense> _cachedFiltered = [];
+  Timer? _searchDebounce;
   @override
   void initState() {
     super.initState();
+    _rebuildFiltered();
     WidgetsBinding.instance.addObserver(this);
     widget.reminderService?.onOpenExpense = _add;
     widget.reminderService?.onOpenSummary = _openSummary;
@@ -80,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     widget.reminderService?.onOpenExpense = null;
     widget.reminderService?.onOpenSummary = null;
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -116,6 +123,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _hasAnyExpenses = hasAnyExpenses;
           _loading = false;
           _error = false;
+          _rebuildFiltered(); // cache ជំនួស getter — loop ១ ដងប៉ុណ្ណោះ
         });
       }
       // Expense data is usable now. Reminder initialization and native
@@ -206,18 +214,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     unawaited(_load());
   }
 
-  List<Expense> get _inPeriod =>
-      _expenses.where((e) => _period.contains(e.date, clock.now())).toList();
+  /// ======================================================
+  /// Cache filter — ហៅ ១ ដងពេល data/period/category/query ផ្លាស់ប្ដូរ
+  /// ជំនួស getter ២ ដែល loop រៀងរាល់ build()
+  /// ======================================================
+  void _rebuildFiltered() {
+    final now = clock.now();
+    _cachedFiltered = _expenses
+        .where(
+          (e) =>
+              _period.contains(e.date, now) &&
+              (_category == null || e.category == _category) &&
+              (_query.isEmpty ||
+                  e.category.label.toLowerCase().contains(_query) ||
+                  e.note.toLowerCase().contains(_query)),
+        )
+        .toList();
+  }
 
-  List<Expense> get _filteredExpenses => _inPeriod
-      .where(
-        (e) =>
-            (_category == null || e.category == _category) &&
-            (_query.isEmpty ||
-                e.category.label.toLowerCase().contains(_query) ||
-                e.note.toLowerCase().contains(_query)),
-      )
-      .toList();
+  // Helper used by summary card and report section (needs unfiltered period data)
+  List<Expense> get _inPeriod {
+    final now = clock.now();
+    return _expenses.where((e) => _period.contains(e.date, now)).toList();
+  }
+
+  List<Expense> get _filteredExpenses => _cachedFiltered;
 
   Future<void> _showCategoryFilter() async {
     final selected = await showModalBottomSheet<String>(
@@ -320,6 +341,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _category = selected == 'all'
           ? null
           : _categories.firstWhere((category) => category.name == selected);
+      _rebuildFiltered(); // cache ចាំបាច់ refresh ពេល category ផ្លាស់ប្ដូរ
     });
   }
 
@@ -362,19 +384,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
     if (confirmed == true && mounted) {
       final idsToDelete = _selectedIds.toList();
-      await widget.repository.deleteMultiple(idsToDelete);
-      if (mounted) {
-        setState(() {
-          _selectedIds.clear();
-          _isSelecting = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('បានលុបចំណាយចំនួន $count រួចរាល់'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        await _load();
+      setState(() => _isDeleting = true); // ✅ progress overlay
+      try {
+        await widget.repository.deleteMultiple(idsToDelete);
+        if (mounted) {
+          setState(() {
+            _selectedIds.clear();
+            _isSelecting = false;
+            _isDeleting = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('បានលុបចំណាយចំនួន $count រួចរាល់'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          await _load();
+        }
+      } catch (_) {
+        if (mounted) setState(() => _isDeleting = false);
       }
     }
   }
@@ -390,7 +418,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         });
       }
     },
-    child: Scaffold(
+    child: Stack(
+      children: [
+        Scaffold(
       body: SafeArea(
         bottom: false,
         child: Center(
@@ -579,8 +609,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     onPressed: () => setState(() {
                                       _search = !_search;
                                       if (!_search) {
+                                        _searchDebounce?.cancel();
                                         _query = '';
                                         _searchController.clear();
+                                        _rebuildFiltered(); // ✅ reset filter ភ្លាម
                                       }
                                     }),
                                     icon: Icon(
@@ -614,16 +646,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     hintText: 'ស្វែងរកឈ្មោះ ឬកំណត់ចំណាំ',
                                     prefixIcon: Icon(Icons.search),
                                   ),
-                                  onChanged: (value) => setState(
-                                    () => _query = value.trim().toLowerCase(),
-                                  ),
+                                   onChanged: (value) {
+                                    // ✅ Debounce 300ms — filter runs ១ ដង ក្រោយ user ឈប់វាយ
+                                    _searchDebounce?.cancel();
+                                    _searchDebounce = Timer(
+                                      const Duration(milliseconds: 300),
+                                      () => setState(() {
+                                        _query = value.trim().toLowerCase();
+                                        _rebuildFiltered();
+                                      }),
+                                    );
+                                  },
                                 ),
                               ),
                             if (_category != null)
                               InputChip(
                                 label: Text(_category!.label),
-                                onDeleted: () =>
-                                    setState(() => _category = null),
+                                onDeleted: () => setState(() {
+                                  _category = null;
+                                  _rebuildFiltered(); // refresh cache ពេល remove filter
+                                }),
                               ),
                           ],
                         ],
@@ -723,6 +765,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ),
       ),
+        ), // ← close Scaffold
+        // ✅ Overlay ពេល delete ច្រើន — ការពារ double-tap
+        if (_isDeleting)
+          const Positioned.fill(
+            child: AbsorbPointer(
+              child: ColoredBox(
+                color: Color(0x66000000),
+                child: Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+      ],
     ),
   );
 

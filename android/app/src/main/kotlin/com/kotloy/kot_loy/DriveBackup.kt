@@ -13,6 +13,7 @@ import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Tasks
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
@@ -24,6 +25,8 @@ import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 import kotlin.concurrent.withLock
 
 class BackupFailure(val code: String) : Exception(code)
@@ -68,10 +71,14 @@ class DriveBackup(private val context: Context) {
             .putBoolean("automatic", false).putBoolean("queued", false).apply()
     }
 
-    fun changed(path: String) {
+    fun setPath(path: String) {
         val file = File(path).canonicalFile
         require(file.path.startsWith(File(context.applicationInfo.dataDir).canonicalPath + File.separator))
         prefs.edit().putString("path", file.path).apply()
+    }
+
+    fun changed(path: String) {
+        setPath(path)
         if (email != null && prefs.getBoolean("automatic", false)) {
             schedulePeriodic()
             enqueue(false)
@@ -240,16 +247,22 @@ class DriveBackup(private val context: Context) {
             val device = prefs.getString("device", null) ?: UUID.randomUUID().toString().also {
                 prefs.edit().putString("device", it).apply()
             }
-            val bytes = data.toString(2).toByteArray(Charsets.UTF_8)
+            // ✅ Compact JSON + GZIP: 20 MB JSON → ~2-4 MB (80-90% compression)
+            // toString(2) pretty-print ជំនួសដោយ compact JSON → GZIP → ទំហំតូចជាង
+            val jsonBytes = data.toString().toByteArray(Charsets.UTF_8)
+            val bytes = ByteArrayOutputStream().also { bos ->
+                GZIPOutputStream(bos).use { gzip -> gzip.write(jsonBytes) }
+            }.toByteArray()
             if (bytes.size > LIMIT - 8192) throw BackupFailure("too_large")
             val stamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(Date())
             val properties = JSONObject().put("format", FORMAT).put("device", device).put("state", "pending")
             val metadata = JSONObject().put("name", "Kot Luy $stamp ${device.take(8)}.json")
-                .put("mimeType", "text/plain").put("parents", JSONArray().put("appDataFolder"))
+                .put("mimeType", "application/gzip").put("parents", JSONArray().put("appDataFolder"))
                 .put("description", "Kot Luy expense backup. Restore using Kot Luy. Do not edit.")
                 .put("appProperties", properties)
             val boundary = "kot_luy_${UUID.randomUUID()}"
-            val head = "--$boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n$metadata\r\n--$boundary\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n"
+            // ✅ Content-Type: application/gzip ជំនួស text/plain
+            val head = "--$boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n$metadata\r\n--$boundary\r\nContent-Type: application/gzip\r\nContent-Encoding: gzip\r\n\r\n"
             val payload = head.toByteArray(Charsets.UTF_8) + bytes + "\r\n--$boundary--\r\n".toByteArray()
             val uploaded = JSONObject(String(request(token, "upload/drive/v3/files?uploadType=multipart&fields=id,md5Checksum", "POST", payload, "multipart/related; boundary=$boundary"), Charsets.UTF_8))
             val id = uploaded.getString("id")
@@ -296,9 +309,19 @@ class DriveBackup(private val context: Context) {
         val props = file.optJSONObject("appProperties")
         if (props?.optString("format") != FORMAT || props.optString("state") != "complete") throw BackupFailure("invalid")
         if (file.optString("size").toLongOrNull()?.let { it > LIMIT } == true) throw BackupFailure("too_large")
-        val bytes = request(token, "drive/v3/files/$id?alt=media")
-        if (file.optString("md5Checksum") != digest(bytes, "MD5")) throw BackupFailure("integrity")
-        String(bytes, Charsets.UTF_8)
+        val rawBytes = request(token, "drive/v3/files/$id?alt=media")
+        if (file.optString("md5Checksum") != digest(rawBytes, "MD5")) throw BackupFailure("integrity")
+        // ✅ Backward compat: detect GZIP magic bytes (0x1F 0x8B) — ហើយ decompress
+        // backup ចាស់ (plain text) នៅដើរ ដូចមុន
+        val jsonBytes = if (rawBytes.size >= 2
+            && rawBytes[0] == 0x1f.toByte()
+            && rawBytes[1] == 0x8b.toByte()
+        ) {
+            GZIPInputStream(rawBytes.inputStream()).use { it.readBytes() }
+        } else {
+            rawBytes // backward compat — old plain-text backups
+        }
+        String(jsonBytes, Charsets.UTF_8)
     }
 
     fun clearQueue() { prefs.edit().putBoolean("queued", false).apply() }

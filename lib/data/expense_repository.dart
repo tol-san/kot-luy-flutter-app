@@ -68,7 +68,7 @@ class ExpenseRepository {
       ),
     );
     final repo = ExpenseRepository(db);
-    unawaited(DriveBackup.dataChanged(db.path));
+    unawaited(DriveBackup.setDatabasePath(db.path));
     return repo;
   }
 
@@ -495,13 +495,21 @@ class ExpenseRepository {
 
   Future<void> deleteMultiple(List<int> ids) async {
     if (ids.isEmpty) return;
+
+    // ✅ Chunked DELETE WHERE id IN (...) — លឿនជាង individual delete 10×
+    // Chunk size 900 = safe buffer ក្រោម SQLite 999-variable limit (Android ចាស់)
+    const chunkSize = 900;
     await database.transaction((txn) async {
-      final batch = txn.batch();
-      for (final id in ids) {
-        batch.delete('expenses', where: 'id = ?', whereArgs: [id]);
+      for (var i = 0; i < ids.length; i += chunkSize) {
+        final chunk = ids.sublist(i, (i + chunkSize).clamp(0, ids.length));
+        final placeholders = List.filled(chunk.length, '?').join(',');
+        await txn.rawDelete(
+          'DELETE FROM expenses WHERE id IN ($placeholders)',
+          chunk,
+        );
       }
-      await batch.commit(noResult: true);
     });
+
     unawaited(DriveBackup.dataChanged(database.path));
   }
 

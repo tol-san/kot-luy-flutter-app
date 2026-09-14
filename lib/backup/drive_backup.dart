@@ -82,6 +82,14 @@ class DriveBackup {
   static bool get supported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
+  /// Records the active database path without scheduling or enqueueing a backup.
+  static Future<void> setDatabasePath(String databasePath) async {
+    try {
+      if (!supported) return;
+      await channel.invokeMethod<void>('setPath', {'path': databasePath});
+    } catch (_) {}
+  }
+
   /// Notifies the native backup engine that local SQLite database changed.
   static Future<void> dataChanged(String databasePath) async {
     try {
