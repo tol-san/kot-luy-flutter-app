@@ -108,6 +108,7 @@ class LocalReminderService implements ReminderService {
   static const _dailyId = 7001;
   static const _weeklyId = 7002;
   static const _monthlyId = 7003;
+  static const _channelId = 'expense_reminders_v2';
   static const _dailyPayload = 'open_add_expense';
   static const _weeklyPayload = 'open_weekly_report';
   static const _monthlyPayload = 'open_monthly_report';
@@ -171,12 +172,17 @@ class LocalReminderService implements ReminderService {
             .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin
             >();
+        await androidPlugin?.deleteNotificationChannel(
+          channelId: 'expense_reminders',
+        );
         await androidPlugin?.createNotificationChannel(
           const AndroidNotificationChannel(
-            'expense_reminders',
+            _channelId,
             'ការរំលឹកចំណាយ',
             description: 'រំលឹកការកត់ និងសង្ខេបចំណាយ',
-            importance: Importance.defaultImportance,
+            importance: Importance.high,
+            playSound: true,
+            enableVibration: true,
           ),
         );
       } catch (_) {}
@@ -188,7 +194,13 @@ class LocalReminderService implements ReminderService {
 
       try {
         final settings = await loadSettings();
-        if (settings.dailyEnabled) await _scheduleDaily(settings.dailyTime);
+        if (settings.dailyEnabled) {
+          final pending = await _notifications.pendingNotificationRequests();
+          final hasDailyPending = pending.any((r) => r.id == _dailyId);
+          if (!hasDailyPending) {
+            await _scheduleDaily(settings.dailyTime);
+          }
+        }
       } catch (_) {}
     } catch (_) {
       _initialized = false;
@@ -412,6 +424,21 @@ class LocalReminderService implements ReminderService {
     DateTimeComponents? repeat,
   }) async {
     await _notifications.cancel(id: id);
+    var scheduleMode = AndroidScheduleMode.inexactAllowWhileIdle;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        final androidPlugin = _notifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+        final canExact =
+            await androidPlugin?.canScheduleExactNotifications() ?? false;
+        if (canExact) {
+          scheduleMode = AndroidScheduleMode.exactAllowWhileIdle;
+        }
+      } catch (_) {}
+    }
+
     await _notifications.zonedSchedule(
       id: id,
       title: title,
@@ -420,15 +447,22 @@ class LocalReminderService implements ReminderService {
       scheduledDate: scheduled,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
-          'expense_reminders',
+          _channelId,
           'ការរំលឹកចំណាយ',
           channelDescription: 'រំលឹកការកត់ និងសង្ខេបចំណាយ',
-          importance: Importance.defaultImportance,
-          priority: Priority.defaultPriority,
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          largeIcon: DrawableResourceAndroidBitmap('mipmap/ic_launcher'),
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: scheduleMode,
       matchDateTimeComponents: repeat,
     );
   }
