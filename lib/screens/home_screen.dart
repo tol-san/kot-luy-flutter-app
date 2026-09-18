@@ -54,6 +54,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _loadRequest = 0;
   final Set<int> _selectedIds = {};
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
+  bool _showScrollToTop = false;
 
   // ---- Cache: ការពារ loop ២ ដងរៀងរាល់ build() ----
   List<Expense> _cachedFiltered = [];
@@ -61,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _rebuildFiltered();
     WidgetsBinding.instance.addObserver(this);
     widget.reminderService?.onOpenExpense = _add;
@@ -81,8 +84,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final show = _scrollController.offset > 250;
+    if (show != _showScrollToTop) {
+      setState(() => _showScrollToTop = show);
+    }
+  }
+
+  void _scrollToTop() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     widget.reminderService?.onOpenExpense = null;
     widget.reminderService?.onOpenSummary = null;
@@ -166,18 +188,46 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final service = widget.reminderService;
     if (service == null) return;
     try {
-      final day = DateTime(now.year, now.month, now.day);
-      final weekStart = day.subtract(Duration(days: day.weekday - 1));
-      final monthStart = DateTime(now.year, now.month);
+      final today = DateTime(now.year, now.month, now.day);
+      final settings = await service.loadSettings();
+
+      final weeklyTime = settings.weeklyTime;
+      final isMonday = today.weekday == DateTime.monday;
+      final isBeforeWeeklyTime = isMonday &&
+          (now.hour < weeklyTime.hour ||
+              (now.hour == weeklyTime.hour && now.minute < weeklyTime.minute));
+
+      final DateTime weeklyEnd;
+      if (isBeforeWeeklyTime) {
+        weeklyEnd = today;
+      } else {
+        final daysToNextMonday = (DateTime.monday - today.weekday + 7) % 7;
+        final nextMondayDays = daysToNextMonday == 0 ? 7 : daysToNextMonday;
+        weeklyEnd = today.add(Duration(days: nextMondayDays));
+      }
+      final weeklyStart = weeklyEnd.subtract(const Duration(days: 7));
+
+      final monthlyTime = settings.monthlyTime;
+      final isFirstDay = today.day == 1;
+      final isBeforeMonthlyTime = isFirstDay &&
+          (now.hour < monthlyTime.hour ||
+              (now.hour == monthlyTime.hour && now.minute < monthlyTime.minute));
+
+      final DateTime monthlyEnd;
+      if (isBeforeMonthlyTime) {
+        monthlyEnd = DateTime(now.year, now.month, 1);
+      } else {
+        monthlyEnd = now.month == 12
+            ? DateTime(now.year + 1, 1, 1)
+            : DateTime(now.year, now.month + 1, 1);
+      }
+      final monthlyStart = monthlyEnd.month == 1
+          ? DateTime(monthlyEnd.year - 1, 12, 1)
+          : DateTime(monthlyEnd.year, monthlyEnd.month - 1, 1);
+
       final totals = await Future.wait([
-        widget.repository.totalBetween(
-          weekStart,
-          weekStart.add(const Duration(days: 7)),
-        ),
-        widget.repository.totalBetween(
-          monthStart,
-          DateTime(now.year, now.month + 1),
-        ),
+        widget.repository.totalBetween(weeklyStart, weeklyEnd),
+        widget.repository.totalBetween(monthlyStart, monthlyEnd),
       ]);
       await service.activateDefaultReminders();
       await service.syncSummaryAmounts(
@@ -429,6 +479,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: RefreshIndicator(
               onRefresh: _load,
               child: CustomScrollView(
+                controller: _scrollController,
                 slivers: [
                   SliverToBoxAdapter(
                     child: Padding(
@@ -696,9 +747,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     )
                   else if (!_reports)
                     _transactionList(),
-                  const SliverToBoxAdapter(child: SizedBox(height: 30)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 80)),
                 ],
               ),
+            ),
+          ),
+        ),
+      ),
+      floatingActionButton: IgnorePointer(
+        ignoring: !_showScrollToTop,
+        child: AnimatedScale(
+          scale: _showScrollToTop ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          child: FloatingActionButton.small(
+            key: const Key('scrollToTopButton'),
+            heroTag: 'scrollToTop',
+            onPressed: _scrollToTop,
+            backgroundColor: Colors.white,
+            foregroundColor: green,
+            elevation: 3,
+            highlightElevation: 5,
+            shape: const CircleBorder(
+              side: BorderSide(color: line, width: 1),
+            ),
+            child: const Icon(
+              Icons.keyboard_arrow_up_rounded,
+              size: 26,
+              color: green,
             ),
           ),
         ),

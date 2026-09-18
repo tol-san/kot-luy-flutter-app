@@ -14,10 +14,10 @@ enum ReminderKind { daily, weekly, monthly }
 const dailyReminderMessage = 'ថ្ងៃនេះបានកត់ត្រាការចំណាយរបស់អ្នកហើយឬនៅ? 😊';
 
 String weeklyReminderMessage(int amount) =>
-    'សប្ដាហ៍នេះអ្នកបានចំណាយ ${riel(amount)}';
+    'សប្ដាហ៍មុនអ្នកបានចំណាយ ${riel(amount)}';
 
 String monthlyReminderMessage(int amount) =>
-    'ខែនេះអ្នកបានចំណាយ ${riel(amount)}';
+    'ខែមុនអ្នកបានចំណាយ ${riel(amount)}';
 
 @immutable
 class ReminderSettings {
@@ -194,12 +194,15 @@ class LocalReminderService implements ReminderService {
 
       try {
         final settings = await loadSettings();
-        if (settings.dailyEnabled) {
-          final pending = await _notifications.pendingNotificationRequests();
-          final hasDailyPending = pending.any((r) => r.id == _dailyId);
-          if (!hasDailyPending) {
-            await _scheduleDaily(settings.dailyTime);
-          }
+        final pending = await _notifications.pendingNotificationRequests();
+        if (settings.dailyEnabled && !pending.any((r) => r.id == _dailyId)) {
+          await _scheduleDaily(settings.dailyTime);
+        }
+        if (settings.weeklyEnabled && !pending.any((r) => r.id == _weeklyId)) {
+          await _scheduleWeekly(settings.weeklyTime);
+        }
+        if (settings.monthlyEnabled && !pending.any((r) => r.id == _monthlyId)) {
+          await _scheduleMonthly(settings.monthlyTime);
         }
       } catch (_) {}
     } catch (_) {
@@ -269,6 +272,8 @@ class LocalReminderService implements ReminderService {
   @override
   Future<ReminderSettings> loadSettings() async {
     final preferences = await SharedPreferences.getInstance();
+    _weeklyAmount = preferences.getInt('last_weekly_amount') ?? _weeklyAmount;
+    _monthlyAmount = preferences.getInt('last_monthly_amount') ?? _monthlyAmount;
     return ReminderSettings(
       dailyEnabled: preferences.getBool('daily_reminder_enabled') ?? false,
       dailyTime: TimeOfDay(
@@ -327,6 +332,11 @@ class LocalReminderService implements ReminderService {
     await initialize();
     _weeklyAmount = weeklyAmount;
     _monthlyAmount = monthlyAmount;
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      preferences.setInt('last_weekly_amount', weeklyAmount),
+      preferences.setInt('last_monthly_amount', monthlyAmount),
+    ]);
     if (!_initialized || !await _permissionAllowed()) return;
     final settings = await loadSettings();
     if (settings.weeklyEnabled) await _scheduleWeekly(settings.weeklyTime);
@@ -388,10 +398,12 @@ class LocalReminderService implements ReminderService {
       time.minute,
     );
     if (!scheduled.isAfter(now)) {
+      final nextYear = now.month == 12 ? now.year + 1 : now.year;
+      final nextMonth = now.month == 12 ? 1 : now.month + 1;
       scheduled = tz.TZDateTime(
         tz.local,
-        now.year,
-        now.month + 1,
+        nextYear,
+        nextMonth,
         1,
         time.hour,
         time.minute,
@@ -454,7 +466,6 @@ class LocalReminderService implements ReminderService {
           priority: Priority.high,
           playSound: true,
           enableVibration: true,
-          largeIcon: DrawableResourceAndroidBitmap('mipmap/ic_launcher'),
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,

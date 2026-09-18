@@ -71,8 +71,8 @@ class FakeReminderService implements ReminderService {
 void main() {
   test('summary copy contains the current formatted amount only', () {
     expect(dailyReminderMessage, 'ថ្ងៃនេះបានកត់ត្រាការចំណាយរបស់អ្នកហើយឬនៅ? 😊');
-    expect(weeklyReminderMessage(120000), 'សប្ដាហ៍នេះអ្នកបានចំណាយ 120,000 ៛');
-    expect(monthlyReminderMessage(350000), 'ខែនេះអ្នកបានចំណាយ 350,000 ៛');
+    expect(weeklyReminderMessage(120000), 'សប្ដាហ៍មុនអ្នកបានចំណាយ 120,000 ៛');
+    expect(monthlyReminderMessage(350000), 'ខែមុនអ្នកបានចំណាយ 350,000 ៛');
   });
 
   test('all reminders default to disabled in persisted settings', () async {

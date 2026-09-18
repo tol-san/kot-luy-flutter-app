@@ -36,7 +36,7 @@ class DriveSettingsCard extends StatelessWidget {
               vertical: 4,
             ),
             title: const Text(
-              'បម្រុងទុកស្វ័យប្រវត្តិ (Silent)',
+              'បម្រុងទុកស្វ័យប្រវត្តិ',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
