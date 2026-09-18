@@ -261,8 +261,8 @@ class DriveBackup(private val context: Context) {
                 .put("description", "Kot Luy expense backup. Restore using Kot Luy. Do not edit.")
                 .put("appProperties", properties)
             val boundary = "kot_luy_${UUID.randomUUID()}"
-            // ✅ Content-Type: application/gzip ជំនួស text/plain
-            val head = "--$boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n$metadata\r\n--$boundary\r\nContent-Type: application/gzip\r\nContent-Encoding: gzip\r\n\r\n"
+            // ✅ Content-Type: application/gzip (raw binary gzip; do not set Content-Encoding: gzip so Drive preserves exact bytes and MD5)
+            val head = "--$boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n$metadata\r\n--$boundary\r\nContent-Type: application/gzip\r\n\r\n"
             val payload = head.toByteArray(Charsets.UTF_8) + bytes + "\r\n--$boundary--\r\n".toByteArray()
             val uploaded = JSONObject(String(request(token, "upload/drive/v3/files?uploadType=multipart&fields=id,md5Checksum", "POST", payload, "multipart/related; boundary=$boundary"), Charsets.UTF_8))
             val id = uploaded.getString("id")

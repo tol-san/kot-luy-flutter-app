@@ -2,13 +2,13 @@
 
 ## 1. Google Cloud Console Configuration
 
-Verified in Google Cloud Console on 2026-09-06:
+Verified in Google Cloud Console on 2026-09-18:
 
 - **Project**: `kot-luy` (`739180174091`)
 - **API**: Google Drive API (v3) enabled
 - **Android OAuth Client**: `Kot Luy Android Test`
 - **Application ID**: `com.kotloy.kot_loy`
-- **Development SHA-1**: `E2:28:94:C0:34:10:0F:F4:35:2C:2E:05:78:EE:71:19:DC:8F:C7:6F`
+- **Development SHA-1**: `91:68:10:52:A4:A1:4A:05:E0:8F:BE:14:89:EF:DF:D7:19:5D:17:7D`
 - **Declared Scope**: `https://www.googleapis.com/auth/drive.appdata`
 - **Audience**: External, Publishing status: Testing
 - **Client Metadata**: Configured in `config/google-drive.json` (no secrets or user tokens stored)
@@ -29,7 +29,7 @@ The Google Drive backup system is fully implemented using native Android Kotlin 
 ### Compression & Payloads
 - **Format**: `kot_luy_backup`
 - **Payload**: Compact JSON compressed via **GZIP** (`GZIPOutputStream`), reducing payload size by 80–90% (~20 MB JSON compresses to ~2–4 MB).
-- **MIME Type**: `application/gzip` with `Content-Encoding: gzip`.
+- **MIME Type**: `application/gzip` (raw binary gzip; `Content-Encoding: gzip` is deliberately omitted so Google Drive stores and returns exact binary bytes, preserving MD5 checksum integrity).
 - **Backward Compatibility**: Automatically inspects the first two bytes for GZIP magic header (`0x1F 0x8B`). Decompresses GZIP if matched, or falls back to UTF-8 plain-text parsing for legacy uncompressed backups.
 
 ### Native Android WorkManager Automation

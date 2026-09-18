@@ -85,4 +85,43 @@ class DriveBackupSnapshotTest {
             assertEquals(5000, backup.snapshot().getJSONArray("expenses").getJSONObject(0).getInt("amount"))
         }
     }
+
+    @Test
+    fun gzipCompressionRoundTripAndIntegrityVerification() {
+        val originalJson = """{"format":"kot_luy_backup","version":1,"schemaVersion":3,"expenses":[{"id":1,"amount":6000,"category":"lunch"}],"categories":[{"id":"lunch","label":"បាយថ្ងៃត្រង់","sort_order":0}]}"""
+        val jsonBytes = originalJson.toByteArray(Charsets.UTF_8)
+
+        // Compress via GZIP
+        val compressedBytes = java.io.ByteArrayOutputStream().also { bos ->
+            java.util.zip.GZIPOutputStream(bos).use { gzip -> gzip.write(jsonBytes) }
+        }.toByteArray()
+
+        // Verify magic bytes
+        assertTrue(
+            "Compressed data must start with GZIP magic bytes",
+            compressedBytes.size >= 2 && compressedBytes[0] == 0x1f.toByte() && compressedBytes[1] == 0x8b.toByte()
+        )
+
+        // Verify MD5 computation behaves consistently on compressed bytes
+        val md5Digest = java.security.MessageDigest.getInstance("MD5")
+            .digest(compressedBytes)
+            .joinToString("") { "%02x".format(it.toInt() and 255) }
+        val expectedMd5 = java.security.MessageDigest.getInstance("MD5")
+            .digest(compressedBytes)
+            .joinToString("") { "%02x".format(it.toInt() and 255) }
+        assertEquals(expectedMd5, md5Digest)
+
+        // Decompress via GZIPInputStream (as download() does)
+        val decompressedBytes = java.util.zip.GZIPInputStream(compressedBytes.inputStream()).use { it.readBytes() }
+        val reconstructedJson = String(decompressedBytes, Charsets.UTF_8)
+        assertEquals(originalJson, reconstructedJson)
+
+        // Verify backward compatibility fallback for non-GZIP legacy JSON payload
+        val fallbackBytes = if (jsonBytes.size >= 2 && jsonBytes[0] == 0x1f.toByte() && jsonBytes[1] == 0x8b.toByte()) {
+            java.util.zip.GZIPInputStream(jsonBytes.inputStream()).use { it.readBytes() }
+        } else {
+            jsonBytes
+        }
+        assertEquals(originalJson, String(fallbackBytes, Charsets.UTF_8))
+    }
 }

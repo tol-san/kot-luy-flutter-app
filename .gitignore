@@ -53,3 +53,8 @@ app.*.map.json
 # Build releases and APKs
 dist/
 *.apk
+
+# Local backups and device data dumps
+backups/
+extracted_backup/
+*.ab
