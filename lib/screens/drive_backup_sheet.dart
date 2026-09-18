@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -24,12 +26,12 @@ class DriveBackupSheet extends StatefulWidget {
   });
 
   final ExpenseRepository repository;
-  final VoidCallback? onDataRestored;
+  final FutureOr<void> Function()? onDataRestored;
 
   static Future<void> show(
     BuildContext context,
     ExpenseRepository repository, {
-    VoidCallback? onDataRestored,
+    FutureOr<void> Function()? onDataRestored,
   }) => showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -316,7 +318,8 @@ class _DriveBackupSheetState extends State<DriveBackupSheet> {
 
     try {
       await _drive.restore(item.id, widget.repository.database);
-      widget.onDataRestored?.call();
+      widget.repository.invalidateCategoryCache();
+      await widget.onDataRestored?.call();
       if (mounted) {
         setState(() {
           _actionInProgress = false;

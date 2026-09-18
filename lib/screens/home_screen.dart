@@ -495,7 +495,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             onDriveBackup: () => DriveBackupSheet.show(
                               context,
                               widget.repository,
-                              onDataRestored: _load,
+                              onDataRestored: () async {
+                                widget.repository.invalidateCategoryCache();
+                                await _load();
+                              },
                             ),
                             onReminderSettings: widget.reminderService == null
                                 ? null

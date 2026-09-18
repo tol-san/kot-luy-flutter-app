@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
+import 'package:kot_luy/backup/backup_snapshot.dart';
 import 'package:kot_luy/backup/drive_backup.dart';
 import 'package:kot_luy/models/expense.dart';
 
@@ -466,6 +467,13 @@ class ExpenseRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+    invalidateCategoryCache();
+    unawaited(DriveBackup.dataChanged(database.path));
+  }
+
+  /// Safely restores data from a [BackupSnapshot], clears category cache, and notifies Drive backup.
+  Future<void> restoreFromSnapshot(BackupSnapshot snapshot) async {
+    await snapshot.restore(database);
     invalidateCategoryCache();
     unawaited(DriveBackup.dataChanged(database.path));
   }
