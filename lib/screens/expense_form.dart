@@ -8,6 +8,9 @@ import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/screens/category_management_sheet.dart';
 import 'package:kot_luy/theme.dart';
 import 'package:kot_luy/widgets/category_picker_sheet.dart';
+import 'package:kot_luy/widgets/expense_form/amount_field.dart';
+import 'package:kot_luy/widgets/expense_form/category_selector.dart';
+import 'package:kot_luy/widgets/expense_form/date_time_picker_row.dart';
 import 'package:kot_luy/widgets/riel_input_formatter.dart';
 
 Future<bool?> showExpenseForm(
@@ -259,379 +262,22 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   style: TextStyle(color: muted, fontSize: 12),
                 ),
                 const SizedBox(height: 23),
-                const Text(
-                  'ចំនួនទឹកប្រាក់',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  key: const Key('amountInput'),
-                  controller: _amount,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [RielInputFormatter()],
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  onChanged: (_) => _form.currentState?.validate(),
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    color: ink,
-                  ),
-                  decoration: const InputDecoration(
-                    hintText: '0',
-                    suffixIcon: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '៛ រៀល',
-                            style: TextStyle(color: green, fontSize: 15),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  validator: (value) => parseRielInput(value) <= 0
-                      ? 'សូមបញ្ចូលចំនួនប្រាក់លើសពី 0'
-                      : null,
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ...[500, 1000, 2000, 3000, 5000, 10000].map(
-                      (v) => ActionChip(
-                        key: Key('quick_amount_$v'),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                        label: Text(
-                          '+${riel(v)}',
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                        side: const BorderSide(color: line),
-                        onPressed: () {
-                          final current = parseRielInput(_amount.text);
-                          final next = current + v;
-                          if (next <= 999999999999) {
-                            final text = formatRielInput('$next');
-                            _amount.value = TextEditingValue(
-                              text: text,
-                              selection: TextSelection.collapsed(
-                                offset: text.length,
-                              ),
-                            );
-                            _form.currentState?.validate();
-                          }
-                        },
-                      ),
-                    ),
-                    ActionChip(
-                      key: const Key('clearAmount'),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      avatar: const Icon(
-                        Icons.backspace_outlined,
-                        size: 13,
-                        color: muted,
-                      ),
-                      label: const Text(
-                        'សម្អាត',
-                        style: TextStyle(fontSize: 11, color: muted),
-                      ),
-                      side: const BorderSide(color: line),
-                      onPressed: () {
-                        _amount.clear();
-                        _form.currentState?.validate();
-                      },
-                    ),
-                  ],
-                ),
+                AmountField(controller: _amount, formKey: _form),
                 const SizedBox(height: 18),
-                Row(
-                  children: [
-                    const Text(
-                      'មុខចំណាយ',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const Spacer(),
-                    InkWell(
-                      key: const Key('manageCategoriesButton'),
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: _manageCategories,
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.swap_vert_rounded,
-                              size: 16,
-                              color: green,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'រៀបចំ ឬ បន្ថែម',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: green,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final buttonWidth = (constraints.maxWidth - 16) / 3;
-                    final top5 = _categories.take(5).toList();
-                    final isCategoryInTop5 = top5.contains(_category);
-                    final moreButtonLabel = !isCategoryInTop5
-                        ? _category.label
-                        : 'ច្រើនទៀត';
-                    final isMoreSelected = !isCategoryInTop5;
-                    final moreCategory = !isCategoryInTop5 ? _category : null;
-
-                    return Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final c in top5)
-                          SizedBox(
-                            width: buttonWidth,
-                            child: Semantics(
-                              selected: c == _category,
-                              child: Material(
-                                color: c == _category
-                                    ? c.background
-                                    : Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  side: BorderSide(
-                                    color: c == _category ? c.color : line,
-                                    width: c == _category ? 1.5 : 1,
-                                  ),
-                                ),
-                                child: InkWell(
-                                  key: Key('category_${c.name}'),
-                                  borderRadius: BorderRadius.circular(14),
-                                  onTap: () => setState(() => _category = c),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 13,
-                                      horizontal: 4,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        c.label,
-                                        textAlign: TextAlign.center,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: c == _category
-                                              ? FontWeight.w700
-                                              : FontWeight.w500,
-                                          color: c == _category ? c.color : ink,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        SizedBox(
-                          width: buttonWidth,
-                          child: Semantics(
-                            selected: isMoreSelected,
-                            child: Material(
-                              color: isMoreSelected
-                                  ? (moreCategory?.background ??
-                                        const Color(0xFFF0F2EB))
-                                  : Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                side: BorderSide(
-                                  color: isMoreSelected
-                                      ? (moreCategory?.color ?? green)
-                                      : line,
-                                  width: isMoreSelected ? 1.5 : 1,
-                                ),
-                              ),
-                              child: InkWell(
-                                key: const Key('category_more'),
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: _showCategoryPickerSheet,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 13,
-                                    horizontal: 4,
-                                  ),
-                                  child: Center(
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            moreButtonLabel,
-                                            textAlign: TextAlign.center,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: isMoreSelected
-                                                  ? FontWeight.w700
-                                                  : FontWeight.w500,
-                                              color: isMoreSelected
-                                                  ? (moreCategory?.color ??
-                                                        green)
-                                                  : muted,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 2),
-                                        Icon(
-                                          Icons.expand_more_rounded,
-                                          size: 14,
-                                          color: isMoreSelected
-                                              ? (moreCategory?.color ?? green)
-                                              : muted,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                CategorySelector(
+                  categories: _categories,
+                  selected: _category,
+                  onSelect: (c) => setState(() => _category = c),
+                  onMore: _showCategoryPickerSheet,
+                  onManage: _manageCategories,
                 ),
                 const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 6,
-                      child: Material(
-                        color: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: const BorderSide(color: line),
-                        ),
-                        child: InkWell(
-                          key: const Key('datePickerButton'),
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: _pickDate,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 16,
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.calendar_today_outlined,
-                                  size: 18,
-                                  color: green,
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    displayDate(_date),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const Icon(
-                                  Icons.expand_more,
-                                  size: 18,
-                                  color: muted,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 5,
-                      child: Material(
-                        color: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: const BorderSide(color: line),
-                        ),
-                        child: InkWell(
-                          key: const Key('timePickerButton'),
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: _pickTime,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 16,
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.access_time_rounded,
-                                  size: 18,
-                                  color: green,
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    formatTime(_date),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const Icon(
-                                  Icons.expand_more,
-                                  size: 18,
-                                  color: muted,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                DateTimePickerRow(
+                  date: _date,
+                  onPickDate: _pickDate,
+                  onPickTime: _pickTime,
+                  errorText: _dateTimeError,
                 ),
-                if (_dateTimeError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        _dateTimeError!,
-                        key: const Key('futureDateTimeWarning'),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
                 const SizedBox(height: 14),
                 Align(
                   alignment: Alignment.centerLeft,
@@ -656,9 +302,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _showNote
-                                ? 'លាក់កំណត់ចំណាំ'
-                                : '+ បន្ថែមកំណត់ចំណាំ',
+                            _showNote ? 'លាក់កំណត់ចំណាំ' : '+ បន្ថែមកំណត់ចំណាំ',
                             style: const TextStyle(
                               fontSize: 12,
                               color: green,
@@ -681,7 +325,8 @@ class _ExpenseFormState extends State<ExpenseForm> {
                     style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(
                       hintText: 'សរសេរកំណត់ចំណាំ...',
-                      hintStyle: const TextStyle(fontSize: 13, color: muted),
+                      hintStyle:
+                          const TextStyle(fontSize: 13, color: muted),
                       counterText: '',
                       filled: true,
                       fillColor: Colors.white,
@@ -699,7 +344,8 @@ class _ExpenseFormState extends State<ExpenseForm> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: green, width: 1.5),
+                        borderSide:
+                            const BorderSide(color: green, width: 1.5),
                       ),
                     ),
                   ),
@@ -725,7 +371,9 @@ class _ExpenseFormState extends State<ExpenseForm> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.check_rounded),
-                    label: Text(_saving ? 'កំពុងរក្សាទុក...' : 'រក្សាទុកចំណាយ'),
+                    label: Text(
+                      _saving ? 'កំពុងរក្សាទុក...' : 'រក្សាទុកចំណាយ',
+                    ),
                   ),
                 ),
               ],

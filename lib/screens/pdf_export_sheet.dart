@@ -10,6 +10,8 @@ import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/models/report_period.dart';
 import 'package:kot_luy/pdf/expense_pdf_service.dart';
 import 'package:kot_luy/pdf/pdf_downloader.dart';
+import 'package:kot_luy/widgets/pdf/pdf_period_selector.dart';
+import 'package:kot_luy/widgets/pdf/pdf_preview_card.dart';
 
 enum _PdfAction { preview, download }
 
@@ -223,11 +225,44 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                   children: [
                     _buildSectionTitle('កាលកំណត់'),
                     const SizedBox(height: 8),
-                    _buildPeriodTypeSelector(),
-                    const SizedBox(height: 14),
-                    _buildSubPeriodSelector(),
+                    PdfPeriodSelector(
+                      periodType: _periodType,
+                      selectedYear: _selectedYear,
+                      selectedMonth: _selectedMonth,
+                      selectedQuarter: _selectedQuarter,
+                      selectedSemester: _selectedSemester,
+                      selectedWeekStart: _selectedWeekStart,
+                      onPeriodTypeChanged: (type) {
+                        setState(() => _periodType = type);
+                        unawaited(_reloadForPeriod());
+                      },
+                      onYearChanged: (y) {
+                        setState(() => _selectedYear = y);
+                        unawaited(_reloadForPeriod());
+                      },
+                      onMonthChanged: (m) {
+                        setState(() => _selectedMonth = m);
+                        unawaited(_reloadForPeriod());
+                      },
+                      onQuarterChanged: (q) {
+                        setState(() => _selectedQuarter = q);
+                        unawaited(_reloadForPeriod());
+                      },
+                      onSemesterChanged: (s) {
+                        setState(() => _selectedSemester = s);
+                        unawaited(_reloadForPeriod());
+                      },
+                      onWeekStartChanged: (d) {
+                        setState(() => _selectedWeekStart = d);
+                        unawaited(_reloadForPeriod());
+                      },
+                    ),
                     const SizedBox(height: 16),
-                    _buildPreviewCard(filtered.length, totalAmount),
+                    PdfPreviewCard(
+                      periodTitle: _currentConfig.khmerPeriodTitle,
+                      count: filtered.length,
+                      total: totalAmount,
+                    ),
                   ],
                 ),
               ),
@@ -296,466 +331,6 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
     ),
   );
 
-  Widget _buildPeriodTypeSelector() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: ReportPeriodType.values.map((type) {
-          final isSelected = _periodType == type;
-          return Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: ChoiceChip(
-              key: Key('pdf_period_${type.name}'),
-              label: Text(type.label),
-              selected: isSelected,
-              showCheckmark: false,
-              onSelected: (_) {
-                setState(() => _periodType = type);
-                unawaited(_reloadForPeriod()); // ✅ reload DB ជាមួយ period ថ្មី
-              },
-              selectedColor: const Color(0xFFEAF0E1),
-              backgroundColor: Colors.white,
-              labelStyle: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? green : ink,
-              ),
-              side: BorderSide(
-                color: isSelected ? green : line,
-                width: isSelected ? 1.4 : 1,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildSubPeriodSelector() {
-    return AnimatedSize(
-      duration: _transitionDuration,
-      curve: Curves.easeInOutCubic,
-      alignment: Alignment.topCenter,
-      child: AnimatedSwitcher(
-        duration: _transitionDuration,
-        switchInCurve: Curves.easeInOutCubic,
-        switchOutCurve: Curves.easeInOutCubic,
-        // Size to the new controls while outgoing controls fade away.
-        layoutBuilder: (currentChild, previousChildren) => Stack(
-          alignment: Alignment.topCenter,
-          children: [
-            for (final child in previousChildren)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: IgnorePointer(child: ExcludeSemantics(child: child)),
-              ),
-            ?currentChild,
-          ],
-        ),
-        child: KeyedSubtree(
-          key: ValueKey(_periodType),
-          child: () {
-            switch (_periodType) {
-              case ReportPeriodType.week:
-                return _buildWeekSelector();
-              case ReportPeriodType.month:
-                return _buildMonthSelector();
-              case ReportPeriodType.quarter:
-                return _buildQuarterSelector();
-              case ReportPeriodType.semester:
-                return _buildSemesterSelector();
-              case ReportPeriodType.year:
-                return _buildYearSelector();
-            }
-          }(),
-        ),
-      ),
-    );
-  }
-
-  Duration get _transitionDuration => MediaQuery.disableAnimationsOf(context)
-      ? Duration.zero
-      : const Duration(milliseconds: 240);
-
-  Widget _buildWeekSelector() {
-    final now = clock.now();
-    final startOfToday = DateTime(now.year, now.month, now.day);
-    final thisWeekStart = startOfToday.subtract(
-      Duration(days: startOfToday.weekday - 1),
-    );
-    final lastWeekStart = thisWeekStart.subtract(const Duration(days: 7));
-
-    final isThisWeek = _selectedWeekStart == thisWeekStart;
-    final isLastWeek = _selectedWeekStart == lastWeekStart;
-
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            key: const Key('pdf_week_this'),
-            style: OutlinedButton.styleFrom(
-              backgroundColor: isThisWeek
-                  ? const Color(0xFFEAF0E1)
-                  : Colors.white,
-              side: BorderSide(color: isThisWeek ? green : line),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              setState(() => _selectedWeekStart = thisWeekStart);
-              unawaited(_reloadForPeriod());
-            },
-            child: Text(
-              'សប្ដាហ៍នេះ',
-              style: TextStyle(
-                color: isThisWeek ? green : ink,
-                fontWeight: isThisWeek ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: OutlinedButton(
-            key: const Key('pdf_week_last'),
-            style: OutlinedButton.styleFrom(
-              backgroundColor: isLastWeek
-                  ? const Color(0xFFEAF0E1)
-                  : Colors.white,
-              side: BorderSide(color: isLastWeek ? green : line),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              setState(() => _selectedWeekStart = lastWeekStart);
-              unawaited(_reloadForPeriod());
-            },
-            child: Text(
-              'សប្ដាហ៍មុន',
-              style: TextStyle(
-                color: isLastWeek ? green : ink,
-                fontWeight: isLastWeek ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMonthSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildYearDropdown(),
-        const SizedBox(height: 10),
-        Column(
-          children: [
-            for (int row = 0; row < 3; row++) ...[
-              if (row > 0) const SizedBox(height: 6),
-              Row(
-                children: [
-                  for (int col = 0; col < 4; col++) ...[
-                    if (col > 0) const SizedBox(width: 6),
-                    Expanded(child: _buildMonthButton(row * 4 + col + 1)),
-                  ],
-                ],
-              ),
-            ],
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMonthButton(int monthNum) {
-    final isSelected = _selectedMonth == monthNum;
-    final monthName = khmerMonths[monthNum - 1];
-    return InkWell(
-      key: Key('pdf_month_$monthNum'),
-      borderRadius: BorderRadius.circular(10),
-      onTap: () {
-        setState(() => _selectedMonth = monthNum);
-        unawaited(_reloadForPeriod());
-      },
-      child: AnimatedContainer(
-        duration: _transitionDuration,
-        curve: Curves.easeInOutCubic,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEAF0E1) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? green : line,
-            width: isSelected ? 1.4 : 1,
-          ),
-        ),
-        child: Text(
-          monthName,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? green : ink,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuarterSelector() {
-    final quarters = [
-      (1, 'ត្រីមាសទី ១ (មករា-មីនា)'),
-      (2, 'ត្រីមាសទី ២ (មេសា-មិថុនា)'),
-      (3, 'ត្រីមាសទី ៣ (កក្កដា-កញ្ញា)'),
-      (4, 'ត្រីមាសទី ៤ (តុលា-ធ្នូ)'),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildYearDropdown(),
-        const SizedBox(height: 8),
-        ...quarters.map((q) {
-          final isSelected = _selectedQuarter == q.$1;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: InkWell(
-              key: Key('pdf_quarter_${q.$1}'),
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                setState(() => _selectedQuarter = q.$1);
-                unawaited(_reloadForPeriod());
-              },
-              child: AnimatedContainer(
-                duration: _transitionDuration,
-                curve: Curves.easeInOutCubic,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFEAF0E1) : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isSelected ? green : line),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isSelected
-                          ? Icons.radio_button_checked_rounded
-                          : Icons.radio_button_off_rounded,
-                      color: isSelected ? green : muted,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      q.$2,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: isSelected ? green : ink,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildSemesterSelector() {
-    final semesters = [
-      (1, 'ឆមាសទី ១ (មករា ដល់ មិថុនា)'),
-      (2, 'ឆមាសទី ២ (កក្កដា ដល់ ធ្នូ)'),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildYearDropdown(),
-        const SizedBox(height: 8),
-        ...semesters.map((s) {
-          final isSelected = _selectedSemester == s.$1;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: InkWell(
-              key: Key('pdf_semester_${s.$1}'),
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                setState(() => _selectedSemester = s.$1);
-                unawaited(_reloadForPeriod());
-              },
-              child: AnimatedContainer(
-                duration: _transitionDuration,
-                curve: Curves.easeInOutCubic,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFEAF0E1) : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isSelected ? green : line),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isSelected
-                          ? Icons.radio_button_checked_rounded
-                          : Icons.radio_button_off_rounded,
-                      color: isSelected ? green : muted,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      s.$2,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: isSelected ? green : ink,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildYearSelector() {
-    return _buildYearDropdown();
-  }
-
-  Widget _buildYearDropdown() {
-    final currentYear = clock.now().year;
-    final years = [currentYear, currentYear - 1, currentYear - 2];
-    return Row(
-      children: [
-        const Text(
-          'ជ្រើសរើសឆ្នាំ៖ ',
-          style: TextStyle(fontSize: 12, color: muted),
-        ),
-        const SizedBox(width: 8),
-        ...years.map((y) {
-          final isSelected = _selectedYear == y;
-          return Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: ChoiceChip(
-              key: Key('pdf_year_$y'),
-              label: Text('$y'),
-              selected: isSelected,
-              showCheckmark: false,
-              onSelected: (_) {
-                setState(() => _selectedYear = y);
-                unawaited(_reloadForPeriod());
-              },
-              selectedColor: const Color(0xFFEAF0E1),
-              backgroundColor: Colors.white,
-              labelStyle: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? green : ink,
-              ),
-              side: BorderSide(
-                color: isSelected ? green : line,
-                width: isSelected ? 1.4 : 1,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildPreviewCard(int count, int total) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5EB),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: line),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _currentConfig.khmerPeriodTitle,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: ink,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'រកឃើញចំណាយចំនួន $count ប្រតិបត្តិការ • សរុប ${riel(total)}',
-                      style: const TextStyle(fontSize: 11, color: muted),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (count > 1000) ...[
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF8E1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFFE082)),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.info_outline_rounded,
-                  size: 16,
-                  color: Color(0xFFB78103),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'ចំណាយ $count ប្រតិបត្តិការ — PDF អាចមានទំព័រច្រើន។ ណែនាំជ្រើសរើសរយៈពេលខ្លីជាងនេះដើម្បីងាយស្រួលអាន។',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF795548),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
   Widget _buildActionButtons() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
@@ -783,9 +358,7 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                     )
                   : const Icon(Icons.print_outlined, size: 18, color: green),
               label: Text(
-                _activeAction == _PdfAction.preview
-                    ? 'កំពុងរៀបចំ…'
-                    : 'មើល / បោះពុម្ព',
+                _activeAction == _PdfAction.preview ? 'កំពុងរៀបចំ…' : 'មើល / បោះពុម្ព',
                 style: const TextStyle(
                   color: green,
                   fontSize: 13,
@@ -820,10 +393,7 @@ class _PdfExportSheetState extends State<PdfExportSheet> {
                 _activeAction == _PdfAction.download
                     ? 'កំពុងទាញយក…'
                     : 'ទាញយក PDF',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
               ),
             ),
           ),

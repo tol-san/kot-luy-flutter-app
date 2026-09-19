@@ -8,11 +8,13 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import 'package:kot_luy/backup/backup_snapshot.dart';
 import 'package:kot_luy/backup/drive_backup.dart';
+import 'package:kot_luy/data/expense_db_helper.dart';
 import 'package:kot_luy/models/expense.dart';
 
 class ExpenseRepository {
   ExpenseRepository(this.database);
   final Database database;
+
   static Future<ExpenseRepository> open({
     DatabaseFactory? factory,
     String? path,
@@ -38,17 +40,17 @@ class ExpenseRepository {
           await db.execute(
             'CREATE INDEX expenses_category ON expenses(category)',
           );
-          await _createCategoriesTable(db);
+          await ExpenseDbHelper.createCategoriesTable(db);
         },
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 2) {
-            await _createCategoriesTable(db);
+            await ExpenseDbHelper.createCategoriesTable(db);
           }
           if (oldVersion < 3) {
             // Upgrade callbacks already run in a transaction. Repair legacy
             // categories once, rather than scanning expenses on every launch.
-            await _removeLegacyCategory(db);
-            await _deduplicateCategories(db);
+            await ExpenseDbHelper.removeLegacyCategory(db);
+            await ExpenseDbHelper.deduplicateCategories(db);
           }
           if (oldVersion < 4) {
             final columns = await db.rawQuery('PRAGMA table_info(categories)');
@@ -60,10 +62,10 @@ class ExpenseRepository {
             }
           }
           if (oldVersion < 5) {
-            await _refreshCategoryColors(db);
+            await ExpenseDbHelper.refreshCategoryColors(db);
           }
           if (oldVersion < 6) {
-            await _migrateToV6(db);
+            await ExpenseDbHelper.migrateToV6(db);
           }
         },
       ),
@@ -71,122 +73,6 @@ class ExpenseRepository {
     final repo = ExpenseRepository(db);
     unawaited(DriveBackup.setDatabasePath(db.path));
     return repo;
-  }
-
-  static Future<void> _removeLegacyCategory(DatabaseExecutor db) async {
-    final remaining = await db.query(
-      'categories',
-      where: "id != 'other'",
-      orderBy: 'sort_order ASC',
-      limit: 1,
-    );
-    if (remaining.isNotEmpty) {
-      final fallbackId = remaining.first['id'] as String;
-      await db.update('expenses', {
-        'category': fallbackId,
-      }, where: "category = 'other'");
-    }
-    await db.delete('categories', where: "id = 'other'");
-  }
-
-  static Future<void> _refreshCategoryColors(DatabaseExecutor db) async {
-    final rows = await db.query(
-      'categories',
-      orderBy: 'is_custom ASC, sort_order ASC, id ASC',
-    );
-    final defaults = {for (final c in ExpenseCategory.values) c.name: c.color};
-    final used = <Color>[];
-    for (final row in rows) {
-      final id = row['id'] as String;
-      final color = defaults[id] ?? ExpenseCategory.nextColor(used);
-      used.add(color);
-      await db.update(
-        'categories',
-        {'color_value': color.toARGB32()},
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-    }
-  }
-
-  static Future<void> _migrateToV6(DatabaseExecutor db) async {
-    final columns = await db.rawQuery('PRAGMA table_info(expenses)');
-    final hasTitle = columns.any((column) => column['name'] == 'title');
-    if (hasTitle) {
-      await db.execute('''CREATE TABLE expenses_v6 (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        amount INTEGER NOT NULL CHECK(amount > 0 AND amount <= 999999999999),
-        category TEXT NOT NULL,
-        date INTEGER NOT NULL,
-        note TEXT NOT NULL DEFAULT ''
-      )''');
-      await db.execute('''
-        INSERT INTO expenses_v6 (id, amount, category, date, note)
-        SELECT id, amount, category, date, COALESCE(note, '') FROM expenses
-      ''');
-      await db.execute('DROP TABLE expenses');
-      await db.execute('ALTER TABLE expenses_v6 RENAME TO expenses');
-      await db.execute('CREATE INDEX expenses_date ON expenses(date DESC)');
-    }
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS expenses_category ON expenses(category)',
-    );
-  }
-
-  static Future<void> _deduplicateCategories(DatabaseExecutor db) async {
-    final rows = await db.query(
-      'categories',
-      orderBy: 'is_custom ASC, sort_order ASC',
-    );
-    final seen = <String, String>{}; // normalized label -> primary id
-    for (final row in rows) {
-      final id = row['id'] as String;
-      final label = (row['label'] as String).trim().toLowerCase();
-      if (seen.containsKey(label)) {
-        final primaryId = seen[label]!;
-        await db.update(
-          'expenses',
-          {'category': primaryId},
-          where: 'category = ?',
-          whereArgs: [id],
-        );
-        await db.delete('categories', where: 'id = ?', whereArgs: [id]);
-      } else {
-        seen[label] = id;
-      }
-    }
-  }
-
-  static Future<void> _createCategoriesTable(DatabaseExecutor db) async {
-    await db.execute('''CREATE TABLE IF NOT EXISTS categories (
-      id TEXT PRIMARY KEY,
-      label TEXT NOT NULL,
-      color_value INTEGER NOT NULL,
-      sort_order INTEGER NOT NULL,
-      is_custom INTEGER NOT NULL DEFAULT 0,
-      is_archived INTEGER NOT NULL DEFAULT 0
-    )''');
-    final count =
-        Sqflite.firstIntValue(
-          await db.rawQuery('SELECT COUNT(*) FROM categories'),
-        ) ??
-        0;
-    if (count == 0) {
-      final batch = db.batch();
-      for (var i = 0; i < ExpenseCategory.values.length; i++) {
-        final c = ExpenseCategory.values[i];
-        batch.insert('categories', {
-          'id': c.name,
-          'label': c.label,
-          'color_value': c.color.toARGB32(),
-          'sort_order': i,
-          'is_custom': 0,
-        });
-      }
-      await batch.commit(noResult: true);
-    }
-    // Ensure deprecated 'other' is purged from categories table
-    await db.delete('categories', where: "id = 'other'");
   }
 
   List<ExpenseCategory>? _cachedCategories;
@@ -207,7 +93,7 @@ class ExpenseRepository {
 
     final rows = await database.query('categories', orderBy: 'sort_order ASC');
     if (rows.isEmpty) {
-      await _createCategoriesTable(database);
+      await ExpenseDbHelper.createCategoriesTable(database);
       _cachedCategories = ExpenseCategory.values;
       return ExpenseCategory.values;
     }
@@ -222,7 +108,7 @@ class ExpenseRepository {
     }
     if (hasDuplicates) {
       _cachedCategories = null;
-      await database.transaction(_deduplicateCategories);
+      await database.transaction(ExpenseDbHelper.deduplicateCategories);
       return getCategories(includeArchived: includeArchived);
     }
 
@@ -241,7 +127,7 @@ class ExpenseRepository {
     });
     if (hasOutdatedColors) {
       _cachedCategories = null;
-      await _refreshCategoryColors(database);
+      await ExpenseDbHelper.refreshCategoryColors(database);
       return getCategories(includeArchived: includeArchived);
     }
 

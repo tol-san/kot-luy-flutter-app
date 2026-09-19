@@ -2,6 +2,7 @@ import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kot_luy/backup/backup_snapshot.dart';
 import 'package:kot_luy/data/expense_repository.dart';
 import 'package:kot_luy/main.dart';
 import 'package:kot_luy/models/expense.dart';
@@ -182,6 +183,9 @@ class MemoryRepository implements ExpenseRepository {
       if (map.containsKey(id)) categories.add(map[id]!);
     }
   }
+
+  @override
+  Future<void> restoreFromSnapshot(BackupSnapshot snapshot) async {}
 
   @override
   Future<void> close() async {}

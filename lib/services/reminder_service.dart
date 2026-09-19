@@ -7,80 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
-import 'package:kot_luy/models/expense.dart';
+import 'package:kot_luy/services/reminder_settings.dart';
 
-enum ReminderKind { daily, weekly, monthly }
+export 'package:kot_luy/services/reminder_settings.dart'
+    show ReminderKind, ReminderSettings,
+        dailyReminderMessage, weeklyReminderMessage, monthlyReminderMessage;
 
-const dailyReminderMessage = 'ថ្ងៃនេះបានកត់ត្រាការចំណាយរបស់អ្នកហើយឬនៅ? 😊';
-
-String weeklyReminderMessage(int amount) =>
-    'សប្ដាហ៍មុនអ្នកបានចំណាយ ${riel(amount)}';
-
-String monthlyReminderMessage(int amount) =>
-    'ខែមុនអ្នកបានចំណាយ ${riel(amount)}';
-
-@immutable
-class ReminderSettings {
-  const ReminderSettings({
-    required this.dailyEnabled,
-    required this.dailyTime,
-    required this.weeklyEnabled,
-    required this.weeklyTime,
-    required this.monthlyEnabled,
-    required this.monthlyTime,
-  });
-
-  const ReminderSettings.defaults()
-    : dailyEnabled = false,
-      dailyTime = const TimeOfDay(hour: 20, minute: 0),
-      weeklyEnabled = false,
-      weeklyTime = const TimeOfDay(hour: 9, minute: 0),
-      monthlyEnabled = false,
-      monthlyTime = const TimeOfDay(hour: 9, minute: 0);
-
-  final bool dailyEnabled;
-  final TimeOfDay dailyTime;
-  final bool weeklyEnabled;
-  final TimeOfDay weeklyTime;
-  final bool monthlyEnabled;
-  final TimeOfDay monthlyTime;
-
-  bool enabledFor(ReminderKind kind) => switch (kind) {
-    ReminderKind.daily => dailyEnabled,
-    ReminderKind.weekly => weeklyEnabled,
-    ReminderKind.monthly => monthlyEnabled,
-  };
-
-  TimeOfDay timeFor(ReminderKind kind) => switch (kind) {
-    ReminderKind.daily => dailyTime,
-    ReminderKind.weekly => weeklyTime,
-    ReminderKind.monthly => monthlyTime,
-  };
-
-  ReminderSettings copyWith({
-    ReminderKind? kind,
-    bool? enabled,
-    TimeOfDay? time,
-  }) {
-    if (kind == null) return this;
-    return ReminderSettings(
-      dailyEnabled: kind == ReminderKind.daily
-          ? enabled ?? dailyEnabled
-          : dailyEnabled,
-      dailyTime: kind == ReminderKind.daily ? time ?? dailyTime : dailyTime,
-      weeklyEnabled: kind == ReminderKind.weekly
-          ? enabled ?? weeklyEnabled
-          : weeklyEnabled,
-      weeklyTime: kind == ReminderKind.weekly ? time ?? weeklyTime : weeklyTime,
-      monthlyEnabled: kind == ReminderKind.monthly
-          ? enabled ?? monthlyEnabled
-          : monthlyEnabled,
-      monthlyTime: kind == ReminderKind.monthly
-          ? time ?? monthlyTime
-          : monthlyTime,
-    );
-  }
-}
 
 abstract class ReminderService {
   VoidCallback? onOpenExpense;
