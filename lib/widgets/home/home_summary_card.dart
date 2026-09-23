@@ -11,12 +11,14 @@ class HomeSummaryCard extends StatelessWidget {
     required this.expenses,
     required this.categories,
     required this.period,
+    this.periodLabel,
     required this.onOpenReports,
   });
 
   final List<Expense> expenses;
   final List<ExpenseCategory> categories;
   final ExpensePeriod period;
+  final String? periodLabel;
   final VoidCallback onOpenReports;
 
   @override
@@ -102,7 +104,7 @@ class HomeSummaryCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              '${expenses.length} កំណត់ត្រា • ${period.label}',
+              '${expenses.length} កំណត់ត្រា • ${periodLabel ?? period.label}',
               style: const TextStyle(fontSize: 10, color: muted),
             ),
           ),
@@ -194,10 +196,7 @@ class HomeSummaryCard extends StatelessWidget {
 }
 
 class _CategoryLegend extends StatelessWidget {
-  const _CategoryLegend({
-    required this.categories,
-    required this.onShowAll,
-  });
+  const _CategoryLegend({required this.categories, required this.onShowAll});
 
   final List<ExpenseCategory> categories;
   final void Function(List<ExpenseCategory>) onShowAll;
@@ -238,11 +237,8 @@ class _CategoryLegend extends StatelessWidget {
               constraints.maxWidth,
             );
 
-        double moreWidth(int count) =>
-            (4 + textWidth('+$count ទៀត', moreStyle)).clamp(
-              0,
-              constraints.maxWidth,
-            );
+        double moreWidth(int count) => (4 + textWidth('+$count ទៀត', moreStyle))
+            .clamp(0, constraints.maxWidth);
 
         bool fitsInTwoRuns(List<double> widths) {
           var runs = 1;

@@ -10,9 +10,12 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:kot_luy/services/reminder_settings.dart';
 
 export 'package:kot_luy/services/reminder_settings.dart'
-    show ReminderKind, ReminderSettings,
-        dailyReminderMessage, weeklyReminderMessage, monthlyReminderMessage;
-
+    show
+        ReminderKind,
+        ReminderSettings,
+        dailyReminderMessage,
+        weeklyReminderMessage,
+        monthlyReminderMessage;
 
 abstract class ReminderService {
   VoidCallback? onOpenExpense;
@@ -23,10 +26,6 @@ abstract class ReminderService {
   Future<ReminderSettings> loadSettings();
   Future<bool> setEnabled(ReminderKind kind, bool enabled);
   Future<void> updateTime(ReminderKind kind, TimeOfDay time);
-  Future<void> syncSummaryAmounts({
-    required int weeklyAmount,
-    required int monthlyAmount,
-  });
   Future<void> openSystemNotificationSettings();
   Future<bool> isPermissionAllowed();
   bool takePendingOpenExpense();
@@ -50,8 +49,6 @@ class LocalReminderService implements ReminderService {
   bool _initialized = false;
   bool _pendingOpenExpense = false;
   ReminderKind? _pendingSummary;
-  int _weeklyAmount = 0;
-  int _monthlyAmount = 0;
 
   @override
   VoidCallback? onOpenExpense;
@@ -126,14 +123,13 @@ class LocalReminderService implements ReminderService {
 
       try {
         final settings = await loadSettings();
-        final pending = await _notifications.pendingNotificationRequests();
-        if (settings.dailyEnabled && !pending.any((r) => r.id == _dailyId)) {
+        if (settings.dailyEnabled) {
           await _scheduleDaily(settings.dailyTime);
         }
-        if (settings.weeklyEnabled && !pending.any((r) => r.id == _weeklyId)) {
+        if (settings.weeklyEnabled) {
           await _scheduleWeekly(settings.weeklyTime);
         }
-        if (settings.monthlyEnabled && !pending.any((r) => r.id == _monthlyId)) {
+        if (settings.monthlyEnabled) {
           await _scheduleMonthly(settings.monthlyTime);
         }
       } catch (_) {}
@@ -204,8 +200,6 @@ class LocalReminderService implements ReminderService {
   @override
   Future<ReminderSettings> loadSettings() async {
     final preferences = await SharedPreferences.getInstance();
-    _weeklyAmount = preferences.getInt('last_weekly_amount') ?? _weeklyAmount;
-    _monthlyAmount = preferences.getInt('last_monthly_amount') ?? _monthlyAmount;
     return ReminderSettings(
       dailyEnabled: preferences.getBool('daily_reminder_enabled') ?? false,
       dailyTime: TimeOfDay(
@@ -256,25 +250,6 @@ class LocalReminderService implements ReminderService {
     await _save(settings);
   }
 
-  @override
-  Future<void> syncSummaryAmounts({
-    required int weeklyAmount,
-    required int monthlyAmount,
-  }) async {
-    await initialize();
-    _weeklyAmount = weeklyAmount;
-    _monthlyAmount = monthlyAmount;
-    final preferences = await SharedPreferences.getInstance();
-    await Future.wait([
-      preferences.setInt('last_weekly_amount', weeklyAmount),
-      preferences.setInt('last_monthly_amount', monthlyAmount),
-    ]);
-    if (!_initialized || !await _permissionAllowed()) return;
-    final settings = await loadSettings();
-    if (settings.weeklyEnabled) await _scheduleWeekly(settings.weeklyTime);
-    if (settings.monthlyEnabled) await _scheduleMonthly(settings.monthlyTime);
-  }
-
   int _idFor(ReminderKind kind) => switch (kind) {
     ReminderKind.daily => _dailyId,
     ReminderKind.weekly => _weeklyId,
@@ -312,7 +287,7 @@ class LocalReminderService implements ReminderService {
     }
     await _scheduleNotification(
       id: _weeklyId,
-      title: weeklyReminderMessage(_weeklyAmount),
+      title: weeklyReminderMessage,
       payload: _weeklyPayload,
       scheduled: scheduled,
       repeat: DateTimeComponents.dayOfWeekAndTime,
@@ -343,7 +318,7 @@ class LocalReminderService implements ReminderService {
     }
     await _scheduleNotification(
       id: _monthlyId,
-      title: monthlyReminderMessage(_monthlyAmount),
+      title: monthlyReminderMessage,
       payload: _monthlyPayload,
       scheduled: scheduled,
       repeat: DateTimeComponents.dayOfMonthAndTime,
@@ -455,8 +430,9 @@ class LocalReminderService implements ReminderService {
     if (defaultTargetPlatform == TargetPlatform.android) {
       try {
         const channel = MethodChannel('kot_luy/app_settings');
-        final success =
-            await channel.invokeMethod<bool>('openNotificationSettings');
+        final success = await channel.invokeMethod<bool>(
+          'openNotificationSettings',
+        );
         if (success == true) return;
       } catch (_) {}
 

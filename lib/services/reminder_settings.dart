@@ -1,18 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'package:kot_luy/models/expense.dart';
-
 // ---- Notification message helpers ----
-const dailyReminderMessage =
-    'ថ្ងៃនេះបានកត់ត្រាការចំណាយរបស់អ្នកហើយឬនៅ? 😊';
+const dailyReminderMessage = 'ថ្ងៃនេះបានកត់ត្រាការចំណាយរបស់អ្នកហើយឬនៅ? 😊';
 
-String weeklyReminderMessage(int amount) =>
-    'សប្ដាហ៍មុនអ្នកបានចំណាយ ${riel(amount)}';
+const weeklyReminderMessage = 'មើលសង្ខេបចំណាយសប្ដាហ៍មុនរបស់អ្នក';
 
-String monthlyReminderMessage(int amount) =>
-    'ខែមុនអ្នកបានចំណាយ ${riel(amount)}';
-
-
+const monthlyReminderMessage = 'មើលសង្ខេបចំណាយខែមុនរបស់អ្នក';
 
 /// Settings model for all three reminder types (daily, weekly, monthly).
 @immutable

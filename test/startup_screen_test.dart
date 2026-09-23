@@ -1,16 +1,82 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kot_luy/data/expense_repository.dart';
 import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/screens/home_screen.dart';
 import 'package:kot_luy/screens/startup_screen.dart';
+import 'package:kot_luy/services/reminder_service.dart';
 import 'package:kot_luy/theme.dart';
 
 import 'widget_test.dart' show MemoryRepository;
 
 void main() {
+  testWidgets('summary notification opens the completed week and month', (
+    tester,
+  ) async {
+    await withClock(Clock.fixed(DateTime(2026, 9, 24, 12)), () async {
+      final repo = MemoryRepository();
+      repo.items.addAll([
+        Expense(
+          id: 1,
+          title: 'Last week',
+          amount: 12000,
+          category: ExpenseCategory.coffee,
+          date: DateTime(2026, 9, 18),
+        ),
+        Expense(
+          id: 2,
+          title: 'This week',
+          amount: 3000,
+          category: ExpenseCategory.coffee,
+          date: DateTime(2026, 9, 23),
+        ),
+        Expense(
+          id: 3,
+          title: 'Last month',
+          amount: 25000,
+          category: ExpenseCategory.coffee,
+          date: DateTime(2026, 8, 12),
+        ),
+      ]);
+      final reminders = LocalReminderService();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(),
+          home: HomeScreen(
+            repository: repo,
+            reminderService: reminders,
+            initialExpenses: repo.items,
+            initialHasAnyExpenses: true,
+          ),
+        ),
+      );
+
+      reminders.onOpenSummary!(ReminderKind.weekly);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const Key('totalAmount'))).data,
+        '12,000 ៛',
+      );
+      expect(find.textContaining('សប្ដាហ៍មុន'), findsWidgets);
+
+      reminders.onOpenSummary!(ReminderKind.monthly);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const Key('totalAmount'))).data,
+        '25,000 ៛',
+      );
+      await tester.tap(find.byKey(const Key('currentPeriodButton')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const Key('totalAmount'))).data,
+        '15,000 ៛',
+      );
+    });
+  });
+
   testWidgets('startup enters home immediately when storage is ready', (
     tester,
   ) async {
@@ -33,27 +99,28 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('startup honors disableAnimations by entering home with zero duration', (
-    tester,
-  ) async {
-    final storage = Completer<ExpenseRepository>();
-    await tester.pumpWidget(
-      MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: appTheme(),
-        home: MediaQuery(
-          data: const MediaQueryData(disableAnimations: true),
-          child: StartupScreen(openRepository: () => storage.future),
+  testWidgets(
+    'startup honors disableAnimations by entering home with zero duration',
+    (tester) async {
+      final storage = Completer<ExpenseRepository>();
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: appTheme(),
+          home: MediaQuery(
+            data: const MediaQueryData(disableAnimations: true),
+            child: StartupScreen(openRepository: () => storage.future),
+          ),
         ),
-      ),
-    );
-    expect(find.byType(LaunchArtwork), findsOneWidget);
-    storage.complete(MemoryRepository());
-    await tester.pump();
-    await tester.pump();
-    expect(find.byType(HomeScreen), findsOneWidget);
-    expect(find.byType(LaunchArtwork), findsNothing);
-  });
+      );
+      expect(find.byType(LaunchArtwork), findsOneWidget);
+      storage.complete(MemoryRepository());
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(find.byType(LaunchArtwork), findsNothing);
+    },
+  );
 
   testWidgets('startup retries storage errors successfully', (tester) async {
     var attempts = 0;

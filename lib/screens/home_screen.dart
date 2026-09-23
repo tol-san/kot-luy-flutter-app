@@ -44,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late List<ExpenseCategory> _categories =
       widget.initialCategories ?? ExpenseCategory.values;
   ExpensePeriod _period = ExpensePeriod.month;
+  ReminderKind? _summaryReminder;
   ExpenseCategory? _category;
   String _query = '';
   late bool _loading = widget.initialExpenses == null;
@@ -82,8 +83,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
     if (widget.initialExpenses == null) {
       _load();
-    } else {
-      unawaited(_syncReminders(clock.now()));
     }
   }
 
@@ -151,9 +150,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _rebuildFiltered(); // cache ជំនួស getter — loop ១ ដងប៉ុណ្ណោះ
         });
       }
-      // Expense data is usable now. Reminder initialization and native
-      // scheduling continue independently so they cannot delay Home.
-      unawaited(_syncReminders(now));
     } catch (_) {
       if (request != _loadRequest) return;
       if (mounted) {
@@ -170,6 +166,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     DateTime now,
   ) {
     final day = DateTime(now.year, now.month, now.day);
+    if (_summaryReminder == ReminderKind.weekly) {
+      final thisMonday = day.subtract(Duration(days: day.weekday - 1));
+      return (
+        start: thisMonday.subtract(const Duration(days: 7)),
+        end: thisMonday,
+      );
+    }
+    if (_summaryReminder == ReminderKind.monthly) {
+      return (
+        start: DateTime(now.year, now.month - 1),
+        end: DateTime(now.year, now.month),
+      );
+    }
     return switch (period) {
       ExpensePeriod.today => (
         start: day,
@@ -187,61 +196,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     };
   }
 
-  Future<void> _syncReminders(DateTime now) async {
-    final service = widget.reminderService;
-    if (service == null) return;
-    try {
-      final today = DateTime(now.year, now.month, now.day);
-      final settings = await service.loadSettings();
-
-      final weeklyTime = settings.weeklyTime;
-      final isMonday = today.weekday == DateTime.monday;
-      final isBeforeWeeklyTime = isMonday &&
-          (now.hour < weeklyTime.hour ||
-              (now.hour == weeklyTime.hour && now.minute < weeklyTime.minute));
-
-      final DateTime weeklyEnd;
-      if (isBeforeWeeklyTime) {
-        weeklyEnd = today;
-      } else {
-        final daysToNextMonday = (DateTime.monday - today.weekday + 7) % 7;
-        final nextMondayDays = daysToNextMonday == 0 ? 7 : daysToNextMonday;
-        weeklyEnd = today.add(Duration(days: nextMondayDays));
-      }
-      final weeklyStart = weeklyEnd.subtract(const Duration(days: 7));
-
-      final monthlyTime = settings.monthlyTime;
-      final isFirstDay = today.day == 1;
-      final isBeforeMonthlyTime = isFirstDay &&
-          (now.hour < monthlyTime.hour ||
-              (now.hour == monthlyTime.hour && now.minute < monthlyTime.minute));
-
-      final DateTime monthlyEnd;
-      if (isBeforeMonthlyTime) {
-        monthlyEnd = DateTime(now.year, now.month, 1);
-      } else {
-        monthlyEnd = now.month == 12
-            ? DateTime(now.year + 1, 1, 1)
-            : DateTime(now.year, now.month + 1, 1);
-      }
-      final monthlyStart = monthlyEnd.month == 1
-          ? DateTime(monthlyEnd.year - 1, 12, 1)
-          : DateTime(monthlyEnd.year, monthlyEnd.month - 1, 1);
-
-      final totals = await Future.wait([
-        widget.repository.totalBetween(weeklyStart, weeklyEnd),
-        widget.repository.totalBetween(monthlyStart, monthlyEnd),
-      ]);
-      await service.activateDefaultReminders();
-      await service.syncSummaryAmounts(
-        weeklyAmount: totals[0],
-        monthlyAmount: totals[1],
-      );
-    } catch (_) {
-      // Reminder failures must never block access to expense data.
-    }
-  }
-
   void _openSummary(ReminderKind kind) {
     if (!mounted) return;
     final period = kind == ReminderKind.weekly
@@ -250,6 +204,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() {
       _reports = true;
       _period = period;
+      _summaryReminder = kind;
       _loading = true;
       _isSelecting = false;
       _selectedIds.clear();
@@ -260,6 +215,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _selectPeriod(ExpensePeriod period) {
     setState(() {
       _period = period;
+      _summaryReminder = null;
       _loading = true;
       _isSelecting = false;
       _selectedIds.clear();
@@ -273,10 +229,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// ======================================================
   void _rebuildFiltered() {
     final now = clock.now();
+    final range = _dateRange(_period, now);
     _cachedFiltered = _expenses
         .where(
           (e) =>
-              _period.contains(e.date, now) &&
+              (range.start == null || !e.date.isBefore(range.start!)) &&
+              (range.end == null || e.date.isBefore(range.end!)) &&
               (_category == null || e.category == _category) &&
               (_query.isEmpty ||
                   e.category.label.toLowerCase().contains(_query) ||
@@ -288,7 +246,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Helper used by summary card and report section (needs unfiltered period data)
   List<Expense> get _inPeriod {
     final now = clock.now();
-    return _expenses.where((e) => _period.contains(e.date, now)).toList();
+    final range = _dateRange(_period, now);
+    return _expenses
+        .where(
+          (e) =>
+              (range.start == null || !e.date.isBefore(range.start!)) &&
+              (range.end == null || e.date.isBefore(range.end!)),
+        )
+        .toList();
   }
 
   List<Expense> get _filteredExpenses => _cachedFiltered;
@@ -343,8 +308,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   itemCount: _categories.length + 1,
                   itemBuilder: (_, index) {
-                    final category =
-                        index == 0 ? null : _categories[index - 1];
+                    final category = index == 0 ? null : _categories[index - 1];
                     final isSelected = category == _category;
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -498,13 +462,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   context,
                                   widget.repository,
                                   onDataRestored: () async {
-                                    widget.repository
-                                        .invalidateCategoryCache();
+                                    widget.repository.invalidateCategoryCache();
                                     await _load();
                                   },
                                 ),
-                                onReminderSettings: widget.reminderService ==
-                                        null
+                                onReminderSettings:
+                                    widget.reminderService == null
                                     ? null
                                     : () => ReminderSettingsSheet.show(
                                         context,
@@ -528,19 +491,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 _reports
                                     ? 'ស្វែងយល់ពីចំណាយរបស់អ្នក បន្តិចម្ដងៗ។'
                                     : 'មើលថែចំណាយ ដូចមើលថែខ្លួនឯង។',
-                                style:
-                                    const TextStyle(color: muted, fontSize: 12),
+                                style: const TextStyle(
+                                  color: muted,
+                                  fontSize: 12,
+                                ),
                               ),
                               const SizedBox(height: 15),
                               HomePeriodPicker(
                                 period: _period,
                                 onSelect: _selectPeriod,
                               ),
+                              if (_summaryReminder != null)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton(
+                                    key: const Key('currentPeriodButton'),
+                                    onPressed: () => _selectPeriod(_period),
+                                    child: Text(
+                                      _summaryReminder == ReminderKind.weekly
+                                          ? 'សប្ដាហ៍មុន • មើលសប្ដាហ៍នេះ'
+                                          : 'ខែមុន • មើលខែនេះ',
+                                    ),
+                                  ),
+                                ),
                               const SizedBox(height: 16),
                               HomeSummaryCard(
                                 expenses: _inPeriod,
                                 categories: _categories,
                                 period: _period,
+                                periodLabel:
+                                    _summaryReminder == ReminderKind.weekly
+                                    ? 'សប្ដាហ៍មុន'
+                                    : _summaryReminder == ReminderKind.monthly
+                                    ? 'ខែមុន'
+                                    : null,
                                 onOpenReports: () =>
                                     setState(() => _reports = true),
                               ),
@@ -629,8 +613,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         _searchDebounce = Timer(
                                           const Duration(milliseconds: 300),
                                           () => setState(() {
-                                            _query =
-                                                value.trim().toLowerCase();
+                                            _query = value.trim().toLowerCase();
                                             _rebuildFiltered();
                                           }),
                                         );
@@ -745,11 +728,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           icon: Icons.space_dashboard_outlined,
                           label: 'ទិដ្ឋភាពទូទៅ',
                           selected: !_reports,
-                          onTap: () => setState(() {
-                            _reports = false;
-                            _isSelecting = false;
-                            _selectedIds.clear();
-                          }),
+                          onTap: () {
+                            if (_summaryReminder != null) {
+                              _selectPeriod(_period);
+                            }
+                            setState(() {
+                              _reports = false;
+                              _isSelecting = false;
+                              _selectedIds.clear();
+                            });
+                          },
                         ),
                         const SizedBox(width: 16),
                         Expanded(
