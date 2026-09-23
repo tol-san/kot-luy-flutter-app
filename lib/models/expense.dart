@@ -232,6 +232,23 @@ enum ExpensePeriod {
 
   const ExpensePeriod(this.label);
   final String label;
+
+  ({DateTime? start, DateTime? end}) dateRange(DateTime now) {
+    final day = DateTime(now.year, now.month, now.day);
+    return switch (this) {
+      today => (start: day, end: day.add(const Duration(days: 1))),
+      week => (
+        start: day.subtract(Duration(days: day.weekday - 1)),
+        end: day.add(Duration(days: 8 - day.weekday)),
+      ),
+      month => (
+        start: DateTime(now.year, now.month),
+        end: DateTime(now.year, now.month + 1),
+      ),
+      all => (start: null, end: null),
+    };
+  }
+
   bool contains(DateTime date, DateTime now) {
     final startOfDay = DateTime(now.year, now.month, now.day);
     return switch (this) {

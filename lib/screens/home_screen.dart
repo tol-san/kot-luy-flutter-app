@@ -11,6 +11,7 @@ import 'package:kot_luy/screens/drive_backup_sheet.dart';
 import 'package:kot_luy/screens/expense_form.dart';
 import 'package:kot_luy/screens/pdf_export_sheet.dart';
 import 'package:kot_luy/screens/reminder_settings_sheet.dart';
+import 'package:kot_luy/services/expense_period_store.dart';
 import 'package:kot_luy/services/reminder_service.dart';
 import 'package:kot_luy/theme.dart';
 import 'package:kot_luy/widgets/home/home_app_bar.dart';
@@ -29,12 +30,14 @@ class HomeScreen extends StatefulWidget {
     this.initialExpenses,
     this.initialCategories,
     this.initialHasAnyExpenses,
+    this.initialPeriod = ExpensePeriod.month,
   });
   final ExpenseRepository repository;
   final ReminderService? reminderService;
   final List<Expense>? initialExpenses;
   final List<ExpenseCategory>? initialCategories;
   final bool? initialHasAnyExpenses;
+  final ExpensePeriod initialPeriod;
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -43,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late List<Expense> _expenses = widget.initialExpenses ?? [];
   late List<ExpenseCategory> _categories =
       widget.initialCategories ?? ExpenseCategory.values;
-  ExpensePeriod _period = ExpensePeriod.month;
+  late ExpensePeriod _period = widget.initialPeriod;
   ReminderKind? _summaryReminder;
   ExpenseCategory? _category;
   String _query = '';
@@ -179,21 +182,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         end: DateTime(now.year, now.month),
       );
     }
-    return switch (period) {
-      ExpensePeriod.today => (
-        start: day,
-        end: day.add(const Duration(days: 1)),
-      ),
-      ExpensePeriod.week => (
-        start: day.subtract(Duration(days: day.weekday - 1)),
-        end: day.add(Duration(days: 8 - day.weekday)),
-      ),
-      ExpensePeriod.month => (
-        start: DateTime(now.year, now.month),
-        end: DateTime(now.year, now.month + 1),
-      ),
-      ExpensePeriod.all => (start: null, end: null),
-    };
+    return period.dateRange(now);
   }
 
   void _openSummary(ReminderKind kind) {
@@ -213,6 +202,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _selectPeriod(ExpensePeriod period) {
+    unawaited(saveSelectedExpensePeriod(period).catchError((_) {}));
     setState(() {
       _period = period;
       _summaryReminder = null;

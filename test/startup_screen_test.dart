@@ -9,10 +9,79 @@ import 'package:kot_luy/screens/home_screen.dart';
 import 'package:kot_luy/screens/startup_screen.dart';
 import 'package:kot_luy/services/reminder_service.dart';
 import 'package:kot_luy/theme.dart';
+import 'package:kot_luy/widgets/home/home_period_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'widget_test.dart' show MemoryRepository;
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('reopening the app restores the last selected expense period', (
+    tester,
+  ) async {
+    await withClock(Clock.fixed(DateTime(2026, 9, 24, 12)), () async {
+      final repo = MemoryRepository();
+      repo.items.addAll([
+        Expense(
+          id: 1,
+          title: 'Today',
+          amount: 5000,
+          category: ExpenseCategory.coffee,
+          date: DateTime(2026, 9, 24, 9),
+        ),
+        Expense(
+          id: 2,
+          title: 'Earlier this month',
+          amount: 2000,
+          category: ExpenseCategory.coffee,
+          date: DateTime(2026, 9, 10),
+        ),
+      ]);
+
+      Widget app() => MaterialApp(
+        theme: appTheme(),
+        home: StartupScreen(openRepository: () async => repo),
+      );
+
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<HomePeriodPicker>(find.byType(HomePeriodPicker)).period,
+        ExpensePeriod.month,
+      );
+      expect(
+        tester.widget<Text>(find.byKey(const Key('totalAmount'))).data,
+        '7,000 ៛',
+      );
+
+      await tester.tap(find.byKey(const Key('period_today')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const Key('totalAmount'))).data,
+        '5,000 ៛',
+      );
+      expect(
+        (await SharedPreferences.getInstance()).getString(
+          'selected_expense_period',
+        ),
+        'today',
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<HomePeriodPicker>(find.byType(HomePeriodPicker)).period,
+        ExpensePeriod.today,
+      );
+      expect(
+        tester.widget<Text>(find.byKey(const Key('totalAmount'))).data,
+        '5,000 ៛',
+      );
+    });
+  });
+
   testWidgets('summary notification opens the completed week and month', (
     tester,
   ) async {

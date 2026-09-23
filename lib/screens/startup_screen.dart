@@ -8,6 +8,7 @@ import 'package:vector_graphics/vector_graphics.dart';
 import 'package:kot_luy/data/expense_repository.dart';
 import 'package:kot_luy/models/expense.dart';
 import 'package:kot_luy/screens/home_screen.dart';
+import 'package:kot_luy/services/expense_period_store.dart';
 import 'package:kot_luy/services/reminder_service.dart';
 
 import 'package:kot_luy/theme.dart';
@@ -18,12 +19,14 @@ class StartupData {
     this.expenses,
     this.categories,
     this.hasAnyExpenses,
+    this.period = ExpensePeriod.month,
   });
 
   final ExpenseRepository repository;
   final List<Expense>? expenses;
   final List<ExpenseCategory>? categories;
   final bool? hasAnyExpenses;
+  final ExpensePeriod period;
 }
 
 class StartupScreen extends StatefulWidget {
@@ -52,19 +55,20 @@ class _StartupScreenState extends State<StartupScreen> {
   }
 
   Future<StartupData> _init() async {
-    final repo = await widget.openRepository();
+    final repositoryFuture = widget.openRepository();
+    final selectedPeriod = await loadSelectedExpensePeriod();
+    final repo = await repositoryFuture;
     try {
       final now = clock.now();
-      final start = DateTime(now.year, now.month, 1);
-      final end = DateTime(now.year, now.month + 1, 1);
+      final range = selectedPeriod.dateRange(now);
       final hasAnyExpensesFuture = repo.hasAnyExpenses();
       final categories = await repo.getCategories(includeArchived: true);
       final results = await Future.wait<Object>([
         repo.all(
           categories: categories,
           categoriesAreComplete: true,
-          fromInclusive: start,
-          toExclusive: end,
+          fromInclusive: range.start,
+          toExclusive: range.end,
         ),
         hasAnyExpensesFuture,
       ]);
@@ -73,9 +77,10 @@ class _StartupScreenState extends State<StartupScreen> {
         expenses: results[0] as List<Expense>,
         categories: categories,
         hasAnyExpenses: results[1] as bool,
+        period: selectedPeriod,
       );
     } catch (_) {
-      return StartupData(repository: repo);
+      return StartupData(repository: repo, period: selectedPeriod);
     }
   }
 
@@ -83,8 +88,9 @@ class _StartupScreenState extends State<StartupScreen> {
   Widget build(BuildContext context) {
     final disableAnimations =
         MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    final duration =
-        disableAnimations ? Duration.zero : widget.transitionDuration;
+    final duration = disableAnimations
+        ? Duration.zero
+        : widget.transitionDuration;
 
     return FutureBuilder<StartupData>(
       future: _startup,
@@ -100,6 +106,7 @@ class _StartupScreenState extends State<StartupScreen> {
               initialExpenses: data.expenses,
               initialCategories: data.categories,
               initialHasAnyExpenses: data.hasAnyExpenses,
+              initialPeriod: data.period,
             ),
           );
         } else {
